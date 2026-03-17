@@ -4,11 +4,11 @@
   "private": true,
   "packageManager": "npm@11.9.0",
   "scripts": {
-    "build": "npm i && npx prisma generate --schema=packages/database/schema.prisma && turbo build",
-    "dev": "npm i && npx prisma generate --schema=packages/database/schema.prisma && turbo dev -- --port 3026",
-    "lint": "npm i && turbo lint",
-    "format": "npm i && turbo format",
-    "typecheck": "npm i && turbo typecheck"
+    "build": "turbo build",
+    "dev": "turbo dev -- --port 3026",
+    "lint": "turbo lint",
+    "format": "turbo format",
+    "typecheck": "turbo typecheck"
   },
   "devDependencies": {
     "@prisma/client": "^6.19.2",
