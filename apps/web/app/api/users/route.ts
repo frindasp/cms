@@ -1,12 +1,12 @@
 import { prisma } from "@workspace/database";
 import { auth } from "@/auth";
-import { NextResponse } from "next/server";
 import * as bcrypt from "bcryptjs";
+import { ApiResponse } from "@/lib/api-response";
 
 export async function GET(request: Request) {
   const session = await auth();
   if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return ApiResponse.unauthorized();
   }
 
   const { searchParams } = new URL(request.url);
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
   // Remove passwords from response
   const sanitizedData = data.map(({ password, ...user }: any) => user);
 
-  return NextResponse.json({
+  return ApiResponse.success({
     data: sanitizedData,
     total,
     page,
@@ -39,7 +39,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const session = await auth();
   if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return ApiResponse.unauthorized();
   }
 
   try {
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     const { name, email, password, roleId } = body;
 
     if (!email || !password || !roleId) {
-      return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+      return ApiResponse.error("Missing fields", 400);
     }
 
     const existingUser = await prisma.user.findUnique({
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
     });
 
     if (existingUser) {
-      return NextResponse.json({ error: "User already exists" }, { status: 400 });
+      return ApiResponse.error("User already exists", 400);
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -71,9 +71,8 @@ export async function POST(request: Request) {
     });
 
     const { password: _, ...sanitizedUser } = user;
-    return NextResponse.json(sanitizedUser, { status: 201 });
+    return ApiResponse.success(sanitizedUser, 201);
   } catch (error) {
-    console.error("Create user error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return ApiResponse.internalError(error);
   }
 }

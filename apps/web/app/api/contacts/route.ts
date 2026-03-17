@@ -1,11 +1,11 @@
 import { prisma } from "@workspace/database";
 import { auth } from "@/auth";
-import { NextResponse } from "next/server";
+import { ApiResponse } from "@/lib/api-response";
 
 export async function GET(request: Request) {
   const session = await auth();
   if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return ApiResponse.unauthorized();
   }
 
   const { searchParams } = new URL(request.url);
@@ -22,7 +22,7 @@ export async function GET(request: Request) {
     prisma.contact.count(),
   ]);
 
-  return NextResponse.json({
+  return ApiResponse.success({
     data,
     total,
     page,

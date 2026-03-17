@@ -55,8 +55,7 @@ export const authConfig = {
   pages: {
     signIn: "/login",
   },
+  secret: process.env.AUTH_SECRET,
 } satisfies NextAuthConfig
 
-const { handlers, signIn, signOut, auth: _auth } = NextAuth(authConfig)
-export { handlers, signIn, signOut }
-export const auth = _auth as any
+export const { handlers, auth, signIn, signOut } = NextAuth(authConfig) as any

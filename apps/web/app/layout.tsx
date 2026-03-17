@@ -12,6 +12,7 @@ const fontMono = Geist_Mono({
 })
 
 import { Toaster } from "@workspace/ui/components/sonner";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function RootLayout({
   children,
@@ -27,6 +28,7 @@ export default function RootLayout({
       <body>
         <Providers>
           {children}
+          <ThemeToggle />
           <Toaster position="top-right" richColors closeButton />
         </Providers>
       </body>

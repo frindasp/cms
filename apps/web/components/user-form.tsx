@@ -13,6 +13,7 @@ import {
   FormMessage,
 } from "@workspace/ui/components/form";
 import { Input } from "@workspace/ui/components/input";
+import { PasswordInput } from "@workspace/ui/components/password-input";
 import {
   Select,
   SelectContent,
@@ -134,7 +135,7 @@ export function UserForm({ initialData, onSubmit, isLoading }: UserFormProps) {
             <FormItem>
               <FormLabel>Password {initialData && "(Leave blank to keep current)"}</FormLabel>
               <FormControl>
-                <Input type="password" {...field} />
+                <PasswordInput {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
