@@ -4,8 +4,8 @@
   "private": true,
   "packageManager": "npm@11.9.0",
   "scripts": {
-    "build": "npm i && turbo build",
-    "dev": "npm i && turbo dev -- --port 3026",
+    "build": "npm i && npx prisma generate --schema=packages/database/schema.prisma && turbo build",
+    "dev": "npm i && npx prisma generate --schema=packages/database/schema.prisma && turbo dev -- --port 3026",
     "lint": "npm i && turbo lint",
     "format": "npm i && turbo format",
     "typecheck": "npm i && turbo typecheck"
