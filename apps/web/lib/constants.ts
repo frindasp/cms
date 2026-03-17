@@ -1,4 +1,4 @@
-import { Contact, Mail, Users } from "lucide-react";
+import { Contact, Mail, Users, Webhook } from "lucide-react";
 
 export const APP_ROUTES = {
   HOME: "/",
@@ -8,6 +8,7 @@ export const APP_ROUTES = {
     USERS: "/admin/users",
     CONTACTS: "/admin/contacts",
     EMAILS: "/admin/emails",
+    WEBHOOKS: "/admin/webhooks",
   },
 };
 
@@ -16,6 +17,7 @@ export const API_ROUTES = {
   ROLES: "/api/roles",
   CONTACTS: "/api/contacts",
   EMAILS: "/api/emails",
+  WEBHOOKS: "/api/webhooks",
 };
 
 export const DASHBOARD_STATS = [
@@ -45,5 +47,14 @@ export const DASHBOARD_STATS = [
     href: APP_ROUTES.ADMIN.USERS,
     color: "text-amber-500",
     bg: "bg-amber-500/10",
+  },
+  {
+    id: "webhooks",
+    title: "Resend Webhooks",
+    icon: Webhook,
+    description: "Configured Resend Webhooks",
+    href: APP_ROUTES.ADMIN.WEBHOOKS,
+    color: "text-purple-500",
+    bg: "bg-purple-500/10",
   },
 ];

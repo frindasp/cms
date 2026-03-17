@@ -33,27 +33,19 @@ import {
 } from "@workspace/ui/components/dropdown-menu";
 import { Avatar, AvatarFallback } from "@workspace/ui/components/avatar";
 
+import { DASHBOARD_STATS, APP_ROUTES } from "@/lib/constants";
+
 const items = [
   {
     title: "Dashboard",
-    url: "/admin",
+    url: APP_ROUTES.ADMIN.DASHBOARD,
     icon: LayoutDashboard,
   },
-  {
-    title: "Contacts",
-    url: "/admin/contacts",
-    icon: Contact,
-  },
-  {
-    title: "Webhook Emails",
-    url: "/admin/emails",
-    icon: Mail,
-  },
-  {
-    title: "Users",
-    url: "/admin/users",
-    icon: User,
-  },
+  ...DASHBOARD_STATS.map(stat => ({
+    title: stat.title,
+    url: stat.href,
+    icon: stat.icon,
+  }))
 ];
 
 export function AppSidebar() {

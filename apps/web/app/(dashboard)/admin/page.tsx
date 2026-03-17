@@ -3,12 +3,16 @@ import { prisma } from "@workspace/database";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { DASHBOARD_STATS } from "@/lib/constants";
+import { Resend } from "resend";
 
 export default async function AdminPage() {
-  const [contactsCount, emailsCount, usersCount] = await Promise.all([
+  const resend = new Resend(process.env.RESEND_API_KEY || "re_dummy");
+  
+  const [contactsCount, emailsCount, usersCount, webhooksRes] = await Promise.all([
     prisma.contact.count(),
     prisma.webhookEmail.count(),
     prisma.user.count(),
+    process.env.RESEND_API_KEY ? resend.webhooks.list() : Promise.resolve({ data: [] }),
   ]);
 
   const stats = DASHBOARD_STATS.map((stat) => ({
@@ -16,6 +20,7 @@ export default async function AdminPage() {
     value: 
       stat.id === "contacts" ? contactsCount :
       stat.id === "emails" ? emailsCount :
+      stat.id === "webhooks" ? ((webhooksRes.data as any[])?.length || 0) :
       usersCount,
   }));
 
