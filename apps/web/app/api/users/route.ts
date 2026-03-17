@@ -25,7 +25,7 @@ export async function GET(request: Request) {
   ]);
 
   // Remove passwords from response
-  const sanitizedData = data.map(({ password, ...user }) => user);
+  const sanitizedData = data.map(({ password, ...user }: any) => user);
 
   return NextResponse.json({
     data: sanitizedData,
