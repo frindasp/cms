@@ -20,7 +20,7 @@ export default async function AdminPage() {
     value: 
       stat.id === "contacts" ? contactsCount :
       stat.id === "emails" ? emailsCount :
-      stat.id === "webhooks" ? ((webhooksRes.data as any[])?.length || 0) :
+      stat.id === "webhooks" ? ((webhooksRes.data as any)?.data?.length || 0) :
       usersCount,
   }));
 

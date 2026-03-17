@@ -12,21 +12,21 @@ export async function GET() {
 
   try {
     if (!process.env.RESEND_API_KEY) {
-       return ApiResponse.error("Resend API key is not configured.", 400);
+      return ApiResponse.error("Resend API key is not configured.", 400);
     }
     
-    // Fetch from Resend Webhooks API
-    const response = await resend.webhooks.list();
+    // Fetch from Resend Emails API
+    const response = await resend.emails.list();
 
     if (response.error) {
-      return ApiResponse.error(response.error.message || "Failed to fetch webhooks", 400);
+      return ApiResponse.error(response.error.message || "Failed to fetch emails", 400);
     }
 
-    // response.data contains { object: 'list', data: [...] }
-    const webhooks = (response.data as any)?.data || [];
+    // Extract the emails array
+    const emails = (response.data as any)?.data || [];
 
     return ApiResponse.success({
-      data: webhooks,
+      data: emails,
     });
   } catch (error) {
     return ApiResponse.internalError(error);

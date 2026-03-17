@@ -41,11 +41,21 @@ const items = [
     url: APP_ROUTES.ADMIN.DASHBOARD,
     icon: LayoutDashboard,
   },
-  ...DASHBOARD_STATS.map(stat => ({
-    title: stat.title,
-    url: stat.href,
-    icon: stat.icon,
-  }))
+  {
+    title: "Contacts",
+    url: APP_ROUTES.ADMIN.CONTACTS,
+    icon: Contact,
+  },
+  {
+    title: "Resend",
+    url: APP_ROUTES.ADMIN.RESEND.EMAILS,
+    icon: Mail,
+  },
+  {
+    title: "Users",
+    url: APP_ROUTES.ADMIN.USERS,
+    icon: User,
+  },
 ];
 
 export function AppSidebar() {
@@ -71,7 +81,11 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
-                    isActive={pathname === item.url}
+                    isActive={
+                      item.title === "Resend" 
+                        ? pathname.startsWith("/admin/resend")
+                        : pathname === item.url
+                    }
                     tooltip={item.title}
                   >
                     <Link href={item.url}>

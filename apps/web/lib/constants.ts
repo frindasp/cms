@@ -7,8 +7,11 @@ export const APP_ROUTES = {
     DASHBOARD: "/admin",
     USERS: "/admin/users",
     CONTACTS: "/admin/contacts",
-    EMAILS: "/admin/emails",
-    WEBHOOKS: "/admin/webhooks",
+    RESEND: {
+      EMAILS: "/admin/resend/emails",
+      WEBHOOKS: "/admin/resend/webhooks",
+      RECEIVED: "/admin/resend/received",
+    }
   },
 };
 
@@ -16,8 +19,11 @@ export const API_ROUTES = {
   USERS: "/api/users",
   ROLES: "/api/roles",
   CONTACTS: "/api/contacts",
-  EMAILS: "/api/emails",
-  WEBHOOKS: "/api/webhooks",
+  RESEND: {
+    EMAILS: "/api/resend/emails",
+    WEBHOOKS: "/api/resend/webhooks",
+    RECEIVED: "/api/resend/received",
+  }
 };
 
 export const DASHBOARD_STATS = [
@@ -31,13 +37,22 @@ export const DASHBOARD_STATS = [
     bg: "bg-blue-500/10",
   },
   {
-    id: "emails",
-    title: "Webhook Emails",
+    id: "received",
+    title: "Received Emails",
     icon: Mail,
     description: "Emails captured via webhooks",
-    href: APP_ROUTES.ADMIN.EMAILS,
+    href: APP_ROUTES.ADMIN.RESEND.RECEIVED,
     color: "text-emerald-500",
     bg: "bg-emerald-500/10",
+  },
+  {
+    id: "emails",
+    title: "Sent Emails",
+    icon: Mail,
+    description: "Emails sent via Resend API",
+    href: APP_ROUTES.ADMIN.RESEND.EMAILS,
+    color: "text-pink-500",
+    bg: "bg-pink-500/10",
   },
   {
     id: "users",
@@ -53,7 +68,7 @@ export const DASHBOARD_STATS = [
     title: "Resend Webhooks",
     icon: Webhook,
     description: "Configured Resend Webhooks",
-    href: APP_ROUTES.ADMIN.WEBHOOKS,
+    href: APP_ROUTES.ADMIN.RESEND.WEBHOOKS,
     color: "text-purple-500",
     bg: "bg-purple-500/10",
   },

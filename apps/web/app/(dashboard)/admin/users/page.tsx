@@ -99,28 +99,6 @@ export default function UsersPage() {
 
   const columns: ColumnDef<User>[] = [
     {
-      accessorKey: "name",
-      header: "Name",
-      cell: ({ row }) => row.getValue("name") || "N/A",
-    },
-    {
-      accessorKey: "email",
-      header: "Email",
-    },
-    {
-      accessorKey: "role",
-      header: "Role",
-      cell: ({ row }) => {
-        const role = row.original.role;
-        return <Badge variant="outline">{role.name}</Badge>;
-      },
-    },
-    {
-      accessorKey: "createdAt",
-      header: "Joined",
-      cell: ({ row }) => new Date(row.getValue("createdAt")).toLocaleDateString(),
-    },
-    {
       id: "actions",
       cell: ({ row }) => {
         const user = row.original;
@@ -133,7 +111,7 @@ export default function UsersPage() {
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="start">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuItem onClick={() => setEditingUser(user)}>
                 <Pencil className="mr-2 h-4 w-4" />
@@ -155,11 +133,33 @@ export default function UsersPage() {
         );
       },
     },
+    {
+      accessorKey: "name",
+      header: "Name",
+      cell: ({ row }) => row.getValue("name") || "N/A",
+    },
+    {
+      accessorKey: "email",
+      header: "Email",
+    },
+    {
+      accessorKey: "role",
+      header: "Role",
+      cell: ({ row }) => {
+        const role = row.original.role;
+        return <Badge variant="outline">{role.name}</Badge>;
+      },
+    },
+    {
+      accessorKey: "createdAt",
+      header: "Joined",
+      cell: ({ row }) => new Date(row.getValue("createdAt")).toLocaleDateString(),
+    },
   ];
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Users</h1>
           <p className="text-muted-foreground">

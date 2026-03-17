@@ -19,6 +19,19 @@ import Link from "next/link";
 
 const columns: ColumnDef<WebhookEmail>[] = [
   {
+    id: "actions",
+    cell: ({ row }) => {
+      const email = row.original;
+      return (
+        <Link href={`/admin/resend/received/${email.id}`}>
+          <Button variant="ghost" size="icon">
+            <Eye className="h-4 w-4" />
+          </Button>
+        </Link>
+      );
+    },
+  },
+  {
     accessorKey: "from",
     header: "From",
   },
@@ -33,29 +46,16 @@ const columns: ColumnDef<WebhookEmail>[] = [
       return new Date(row.getValue("createdAt")).toLocaleString();
     },
   },
-  {
-    id: "actions",
-    cell: ({ row }) => {
-      const email = row.original;
-      return (
-        <Link href={`/admin/emails/${email.id}`}>
-          <Button variant="ghost" size="icon">
-            <Eye className="h-4 w-4" />
-          </Button>
-        </Link>
-      );
-    },
-  },
 ];
 
-export default function EmailsPage() {
+export default function ReceivedEmailsPage() {
   const [page, setPage] = useState(1);
   const limit = 10;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["emails", page],
+    queryKey: ["received-emails", page],
     queryFn: async () => {
-      const res = await fetch(`/api/emails?page=${page}&limit=${limit}`);
+      const res = await fetch(`/api/resend/received?page=${page}&limit=${limit}`);
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
     },
@@ -63,11 +63,13 @@ export default function EmailsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Webhook Emails</h1>
-        <p className="text-muted-foreground">
-          View all emails captured via incoming webhooks.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Webhook Emails</h1>
+          <p className="text-muted-foreground">
+            View all emails captured via incoming webhooks.
+          </p>
+        </div>
       </div>
 
       <DataTable
