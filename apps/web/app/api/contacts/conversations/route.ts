@@ -2,77 +2,98 @@ import { prisma } from "@workspace/database";
 import { auth } from "@/auth";
 import { ApiResponse } from "@/lib/api-response";
 
-export async function GET(request: Request) {
+type Thread = {
+  email: string;
+  name: string;
+  lastMessage: string;
+  lastMessageAt: Date;
+  messageCount: number;
+  source: "message" | "contact";
+};
+
+export async function GET() {
   const session = await auth();
   if (!session) {
     return ApiResponse.unauthorized();
   }
 
   try {
-    // Get messages to find real conversations (Admin vs User)
     const messages = await prisma.message.findMany({
       orderBy: { createdAt: "desc" },
     });
 
-    const threadsMap = new Map();
+    const userIdByChannel = new Map<string, string>();
+    messages.forEach((msg: (typeof messages)[number]) => {
+      if (msg.senderRole === "user" && msg.senderId) {
+        userIdByChannel.set(msg.channelId, msg.senderId);
+      }
+    });
 
-    // 1. Process Message history first for real two-way chats
-    messages.forEach((msg) => {
-      // Group by channel (email) only to consolidate the entire conversation
-      const key = msg.channelId;
-      
-      if (!threadsMap.has(key)) {
-        threadsMap.set(key, {
+    const messageThreadsMap = new Map<string, Thread>();
+
+    messages.forEach((msg: (typeof messages)[number]) => {
+      const userIdKey = userIdByChannel.get(msg.channelId);
+      const key = userIdKey ? `user:${userIdKey}` : `email:${msg.channelId}`;
+
+      if (!messageThreadsMap.has(key)) {
+        messageThreadsMap.set(key, {
           email: msg.channelId,
-          // Keep list focused on end users; admin-only messages should not become the display name
           name: msg.senderRole === "user" && msg.senderName ? msg.senderName : msg.channelId,
           lastMessage: msg.content,
           lastMessageAt: msg.createdAt,
           messageCount: 1,
+          source: "message",
         });
-      } else {
-        const existing = threadsMap.get(key);
-        // Only update if this message is newer
-        if (new Date(msg.createdAt) > new Date(existing.lastMessageAt)) {
-          existing.lastMessage = msg.content;
-          existing.lastMessageAt = msg.createdAt;
-        }
-
-        // Prefer user name so thread list consistently shows who contacted us, not the admin replier
-        if (msg.senderRole === "user" && msg.senderName) {
-          existing.name = msg.senderName;
-        }
-
-        existing.messageCount += 1;
+        return;
       }
+
+      const existing = messageThreadsMap.get(key)!;
+
+      if (new Date(msg.createdAt) > new Date(existing.lastMessageAt)) {
+        existing.lastMessage = msg.content;
+        existing.lastMessageAt = msg.createdAt;
+      }
+
+      if (msg.senderRole === "user" && msg.senderName) {
+        existing.name = msg.senderName;
+      }
+
+      existing.messageCount += 1;
     });
 
-    // 2. Add Contact form submissions
     const contacts = await prisma.contact.findMany({
       orderBy: { createdAt: "desc" },
     });
 
-    contacts.forEach((contact) => {
+    const contactThreadsMap = new Map<string, Thread>();
+    contacts.forEach((contact: (typeof contacts)[number]) => {
       const key = contact.email;
-      if (!threadsMap.has(key)) {
-        threadsMap.set(key, {
+      if (!contactThreadsMap.has(key)) {
+        contactThreadsMap.set(key, {
           email: contact.email,
           name: contact.name,
           lastMessage: contact.message,
           lastMessageAt: contact.createdAt,
           messageCount: 1,
+          source: "contact",
         });
-      } else {
-        const existing = threadsMap.get(key);
-        // If current name is still just email/placeholder, replace with known contact name
-        if (!existing.name || existing.name === key) {
-          existing.name = contact.name;
-        }
+        return;
       }
+
+      const existing = contactThreadsMap.get(key)!;
+      if (new Date(contact.createdAt) > new Date(existing.lastMessageAt)) {
+        existing.lastMessage = contact.message;
+        existing.lastMessageAt = contact.createdAt;
+      }
+
+      existing.messageCount += 1;
     });
 
     return ApiResponse.success({
-      data: Array.from(threadsMap.values()),
+      data: {
+        messageThreads: Array.from(messageThreadsMap.values()),
+        contactThreads: Array.from(contactThreadsMap.values()),
+      },
     });
   } catch (error) {
     return ApiResponse.internalError(error);

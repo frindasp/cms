@@ -23,7 +23,7 @@ export async function GET(request: Request) {
 
     if (messages.length > 0) {
       return ApiResponse.success({
-        data: messages.map((m) => ({
+        data: messages.map((m: (typeof messages)[number]) => ({
           id: m.id,
           content: m.content,
           senderId: m.senderId,
@@ -43,7 +43,7 @@ export async function GET(request: Request) {
     });
     
     return ApiResponse.success({
-      data: contacts.map((m) => ({
+      data: contacts.map((m: (typeof contacts)[number]) => ({
         id: m.id,
         content: m.message,
         senderId: m.email,
