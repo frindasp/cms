@@ -8,6 +8,7 @@ import {
   LogOut,
   Settings,
   ChevronRight,
+  Send,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -55,6 +56,11 @@ const items = [
     title: "Users",
     url: APP_ROUTES.ADMIN.USERS,
     icon: User,
+  },
+  {
+    title: "Real-time Chat",
+    url: "/admin/realtime-demo",
+    icon: Send,
   },
 ];
 

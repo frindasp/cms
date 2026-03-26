@@ -29,16 +29,31 @@ model WebhookEmail {
 model User {
   id        String   @id @default(cuid())
   name      String?
-  email     String   @unique
+  email     String
   password  String
   roleId    String
-  role      Role     @relation(fields: [roleId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  role      Role     @relation(fields: [roleId], references: [id])
+
+  @@index([roleId], map: "User_roleId_fkey")
 }
 
 model Role {
   id    String @id @default(cuid())
-  name  String @unique // "ADMIN"
+  name  String @unique
   users User[]
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  senderId  String
+  senderName String?
+  channelId String   // Use email or unique room as channelId
+  senderRole String   @default("user") // "user" or "admin"
+  createdAt DateTime @default(now())
+
+  @@index([channelId])
+  @@index([senderId])
 }
