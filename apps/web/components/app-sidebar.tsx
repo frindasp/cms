@@ -6,9 +6,10 @@ import {
   Mail,
   User,
   LogOut,
-  Settings,
   ChevronRight,
   Send,
+  MessageSquare,
+  Shield,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -32,9 +33,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
-import { Avatar, AvatarFallback } from "@workspace/ui/components/avatar";
 
-import { DASHBOARD_STATS, APP_ROUTES } from "@/lib/constants";
+import { APP_ROUTES } from "@/lib/constants";
 
 const items = [
   {
@@ -56,6 +56,16 @@ const items = [
     title: "Users",
     url: APP_ROUTES.ADMIN.USERS,
     icon: User,
+  },
+  {
+    title: "Roles",
+    url: APP_ROUTES.ADMIN.ROLES,
+    icon: Shield,
+  },
+  {
+    title: "Messages",
+    url: APP_ROUTES.ADMIN.MESSAGES,
+    icon: MessageSquare,
   },
   {
     title: "Real-time Chat",
