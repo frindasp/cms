@@ -9,21 +9,23 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const email = searchParams.get("email");
+  // Conversation identity uses channelId in Message table.
+  // For contact-form compatibility, channelId currently equals user email.
+  const channelId = searchParams.get("channelId") ?? searchParams.get("email");
 
-  if (!email) {
-    return ApiResponse.error("Email is required", 400);
+  if (!channelId) {
+    return ApiResponse.error("channelId is required", 400);
   }
   try {
-    // Fetch all chat records for this conversation (channelId/email)
+    // Fetch all chat records for this conversation channel.
     const messages = await prisma.message.findMany({
-      where: { channelId: email },
+      where: { channelId },
       orderBy: { createdAt: "asc" },
     });
 
     // Keep contact history too, so timeline remains complete
     const contacts = await prisma.contact.findMany({
-      where: { email },
+      where: { email: channelId },
       orderBy: { createdAt: "asc" },
     });
 

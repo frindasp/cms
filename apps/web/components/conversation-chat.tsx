@@ -92,10 +92,10 @@ export default function ConversationChat() {
     }
   };
 
-  const fetchMessages = async (email: string) => {
+  const fetchMessages = async (channelId: string) => {
     setLoadingMessages(true);
     try {
-      const res = await fetch(`/api/contacts/messages?email=${encodeURIComponent(email)}`);
+      const res = await fetch(`/api/contacts/messages?channelId=${encodeURIComponent(channelId)}`);
       if (res.ok) {
         const json = await res.json();
         setMessages(json.data);
