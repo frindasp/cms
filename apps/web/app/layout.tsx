@@ -1,15 +1,6 @@
-import { Geist, Geist_Mono, Inter } from "next/font/google"
-
 import "@workspace/ui/globals.css"
 import { Providers } from "@/components/providers"
 import { cn } from "@workspace/ui/lib/utils";
-
-const inter = Inter({subsets:['latin'],variable:'--font-sans'})
-
-const fontMono = Geist_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
-})
 
 import { Toaster } from "@workspace/ui/components/sonner";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -23,7 +14,15 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={cn("antialiased", fontMono.variable, "font-sans", inter.variable)}
+      className={cn("antialiased", "font-sans")}
+      style={
+        {
+          "--font-sans":
+            "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+          "--font-mono":
+            "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+        } as React.CSSProperties
+      }
     >
       <body>
         <Providers>
