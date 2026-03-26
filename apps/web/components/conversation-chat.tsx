@@ -15,6 +15,7 @@ type Message = {
   id: string;
   content: string;
   senderId: string;
+  senderRole?: "user" | "admin";
   createdAt: string;
   sender: {
     name: string | null;
@@ -37,7 +38,7 @@ export default function ConversationChat() {
   const [messageThreads, setMessageThreads] = useState<Thread[]>([]);
   const [contactThreads, setContactThreads] = useState<Thread[]>([]);
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
-  const [activeTab, setActiveTab] = useState<ThreadSource>("message");
+  const [activeTab, setActiveTab] = useState<ThreadSource>("contact");
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -63,8 +64,26 @@ export default function ConversationChat() {
       if (res.ok) {
         const json = await res.json();
         const grouped = json.data ?? {};
-        setMessageThreads(grouped.messageThreads ?? []);
-        setContactThreads(grouped.contactThreads ?? []);
+        const nextMessageThreads: Thread[] = grouped.messageThreads ?? [];
+        const nextContactThreads: Thread[] = grouped.contactThreads ?? [];
+
+        setMessageThreads(nextMessageThreads);
+        setContactThreads(nextContactThreads);
+        setActiveTab((prev) => {
+          if (prev === "message" && nextMessageThreads.length === 0 && nextContactThreads.length > 0) return "contact";
+          if (prev === "contact" && nextContactThreads.length === 0 && nextMessageThreads.length > 0) return "message";
+          return prev;
+        });
+        setSelectedThread((prev) => {
+          if (prev) {
+            const stillExists =
+              nextMessageThreads.find((thread) => thread.email === prev.email && thread.source === prev.source) ??
+              nextContactThreads.find((thread) => thread.email === prev.email && thread.source === prev.source);
+            if (stillExists) return stillExists;
+          }
+
+          return nextContactThreads[0] ?? nextMessageThreads[0] ?? null;
+        });
       }
     } catch (err) {
       console.error(err);
@@ -229,7 +248,7 @@ export default function ConversationChat() {
                 <div className="flex justify-center items-center h-full"><Loader2 className="animate-spin" /></div>
               ) : (
                 messages.map((msg, idx) => {
-                  const isAdmin = (msg as any).senderRole === "admin";
+                  const isAdmin = msg.senderRole === "admin";
                   return (
                     <div
                       key={msg.id || idx}

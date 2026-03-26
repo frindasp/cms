@@ -17,14 +17,14 @@ export default function RealtimeDemo() {
         </p>
       </div>
 
-      <Tabs defaultValue="chat" className="w-full">
+      <Tabs defaultValue="grouped" className="w-full">
         <div className="flex justify-center mb-10">
-          <TabsList className="grid w-[600px] grid-cols-3 p-1.5 h-14 rounded-2xl border-primary/20 bg-background/50 backdrop-blur-md shadow-lg">
+          <TabsList className="grid w-full max-w-[700px] grid-cols-3 p-1.5 h-14 rounded-2xl border-primary/20 bg-background/50 backdrop-blur-md shadow-lg">
+            <TabsTrigger value="grouped" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-300">
+               Grouped Chat
+            </TabsTrigger>
             <TabsTrigger value="chat" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-300">
                Public Chat
-            </TabsTrigger>
-             <TabsTrigger value="grouped" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-300">
-               Grouped Chat
             </TabsTrigger>
             <TabsTrigger value="contact" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-300">
                Contact Form
