@@ -6,6 +6,8 @@ export const APP_ROUTES = {
   ADMIN: {
     DASHBOARD: "/admin",
     USERS: "/admin/users",
+    ROLES: "/admin/roles",
+    MESSAGES: "/admin/messages",
     CONTACTS: "/admin/contacts",
     RESEND: {
       EMAILS: "/admin/resend/emails",
@@ -18,6 +20,7 @@ export const APP_ROUTES = {
 export const API_ROUTES = {
   USERS: "/api/users",
   ROLES: "/api/roles",
+  MESSAGES: "/api/messages",
   CONTACTS: "/api/contacts",
   RESEND: {
     EMAILS: "/api/resend/emails",
