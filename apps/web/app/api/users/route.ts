@@ -50,7 +50,7 @@ export async function POST(request: Request) {
       return ApiResponse.error("Missing fields", 400);
     }
 
-    const existingUser = await prisma.user.findUnique({
+    const existingUser = await prisma.user.findFirst({
       where: { email },
     });
 
