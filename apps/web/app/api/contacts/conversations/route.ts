@@ -22,18 +22,10 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
     });
 
-    const userIdByChannel = new Map<string, string>();
-    messages.forEach((msg: (typeof messages)[number]) => {
-      if (msg.senderRole === "user" && msg.senderId) {
-        userIdByChannel.set(msg.channelId, msg.senderId);
-      }
-    });
-
     const messageThreadsMap = new Map<string, Thread>();
 
     messages.forEach((msg: (typeof messages)[number]) => {
-      const userIdKey = userIdByChannel.get(msg.channelId);
-      const key = userIdKey ? `user:${userIdKey}` : `email:${msg.channelId}`;
+      const key = msg.channelId;
 
       if (!messageThreadsMap.has(key)) {
         messageThreadsMap.set(key, {
@@ -89,10 +81,17 @@ export async function GET() {
       existing.messageCount += 1;
     });
 
+    const messageThreads = Array.from(messageThreadsMap.values()).sort(
+      (a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
+    );
+    const contactThreads = Array.from(contactThreadsMap.values()).sort(
+      (a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
+    );
+
     return ApiResponse.success({
       data: {
-        messageThreads: Array.from(messageThreadsMap.values()),
-        contactThreads: Array.from(contactThreadsMap.values()),
+        messageThreads,
+        contactThreads,
       },
     });
   } catch (error) {
