@@ -25,12 +25,19 @@ export async function GET() {
     const messageThreadsMap = new Map<string, Thread>();
 
     messages.forEach((msg: (typeof messages)[number]) => {
-      const key = msg.channelId;
+      const key =
+        msg.channelId ??
+        msg.senderEmail ??
+        msg.contactId ??
+        `message-${msg.id}`;
+      const displayEmail = msg.channelId ?? msg.senderEmail ?? key;
+      const displayName =
+        msg.senderRole === "user" && msg.senderName ? msg.senderName : displayEmail;
 
       if (!messageThreadsMap.has(key)) {
         messageThreadsMap.set(key, {
-          email: msg.channelId,
-          name: msg.senderRole === "user" && msg.senderName ? msg.senderName : msg.channelId,
+          email: displayEmail,
+          name: displayName,
           lastMessage: msg.content,
           lastMessageAt: msg.createdAt,
           messageCount: 1,
