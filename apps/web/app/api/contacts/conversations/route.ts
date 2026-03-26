@@ -24,7 +24,8 @@ export async function GET(request: Request) {
       if (!threadsMap.has(key)) {
         threadsMap.set(key, {
           email: msg.channelId,
-          name: msg.senderName || msg.channelId,
+          // Keep list focused on end users; admin-only messages should not become the display name
+          name: msg.senderRole === "user" && msg.senderName ? msg.senderName : msg.channelId,
           lastMessage: msg.content,
           lastMessageAt: msg.createdAt,
           messageCount: 1,
@@ -36,6 +37,12 @@ export async function GET(request: Request) {
           existing.lastMessage = msg.content;
           existing.lastMessageAt = msg.createdAt;
         }
+
+        // Prefer user name so thread list consistently shows who contacted us, not the admin replier
+        if (msg.senderRole === "user" && msg.senderName) {
+          existing.name = msg.senderName;
+        }
+
         existing.messageCount += 1;
       }
     });
@@ -55,6 +62,12 @@ export async function GET(request: Request) {
           lastMessageAt: contact.createdAt,
           messageCount: 1,
         });
+      } else {
+        const existing = threadsMap.get(key);
+        // If current name is still just email/placeholder, replace with known contact name
+        if (!existing.name || existing.name === key) {
+          existing.name = contact.name;
+        }
       }
     });
 
