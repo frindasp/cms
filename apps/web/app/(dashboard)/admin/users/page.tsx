@@ -19,9 +19,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
-import { MoreHorizontal, Pencil, Plus, Trash } from "lucide-react";
+import { MoreHorizontal, Pencil, Plus, Trash, ShieldCheck } from "lucide-react";
 import { UserForm } from "@/components/user-form";
 import { Badge } from "@workspace/ui/components/badge";
+import { UserAuthenticatorsDialog } from "@/components/user-authenticators-dialog";
 
 type User = {
   id: string;
@@ -38,6 +39,7 @@ export default function UsersPage() {
   const [page, setPage] = useState(1);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [securityUser, setSecurityUser] = useState<{ id: string; name: string | null } | null>(null);
   const limit = 10;
   const queryClient = useQueryClient();
 
@@ -117,6 +119,10 @@ export default function UsersPage() {
                 <Pencil className="mr-2 h-4 w-4" />
                 Edit
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSecurityUser({ id: user.id, name: user.name })}>
+                <ShieldCheck className="mr-2 h-4 w-4" />
+                Security Keys
+              </DropdownMenuItem>
               <DropdownMenuItem
                 className="text-destructive focus:bg-destructive/10 focus:text-destructive"
                 onClick={() => {
@@ -136,7 +142,17 @@ export default function UsersPage() {
     {
       accessorKey: "name",
       header: "Name",
-      cell: ({ row }) => row.getValue("name") || "N/A",
+      cell: ({ row }) => {
+        const user = row.original;
+        return (
+          <button
+            onClick={() => setSecurityUser({ id: user.id, name: user.name })}
+            className="hover:underline text-primary font-medium focus:outline-none"
+          >
+            {user.name || "N/A"}
+          </button>
+        );
+      },
     },
     {
       accessorKey: "email",
@@ -212,6 +228,12 @@ export default function UsersPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <UserAuthenticatorsDialog
+        userId={securityUser?.id || null}
+        userName={securityUser?.name || null}
+        onClose={() => setSecurityUser(null)}
+      />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { Contact, Mail, Users, Webhook } from "lucide-react";
+import { Contact, Mail, Users, Webhook, Shield } from "lucide-react";
 
 export const APP_ROUTES = {
   HOME: "/",
@@ -13,7 +13,8 @@ export const APP_ROUTES = {
       EMAILS: "/admin/resend/emails",
       WEBHOOKS: "/admin/resend/webhooks",
       RECEIVED: "/admin/resend/received",
-    }
+    },
+    VERIFICATION_TOKENS: "/admin/verification-tokens",
   },
 };
 
@@ -26,7 +27,8 @@ export const API_ROUTES = {
     EMAILS: "/api/resend/emails",
     WEBHOOKS: "/api/resend/webhooks",
     RECEIVED: "/api/resend/received",
-  }
+  },
+  VERIFICATION_TOKENS: "/api/verification-tokens",
 };
 
 export const DASHBOARD_STATS = [
@@ -74,5 +76,14 @@ export const DASHBOARD_STATS = [
     href: APP_ROUTES.ADMIN.RESEND.WEBHOOKS,
     color: "text-purple-500",
     bg: "bg-purple-500/10",
+  },
+  {
+    id: "tokens",
+    title: "Verification Tokens",
+    icon: Shield,
+    description: "Active verification codes",
+    href: APP_ROUTES.ADMIN.VERIFICATION_TOKENS,
+    color: "text-rose-500",
+    bg: "bg-rose-500/10",
   },
 ];

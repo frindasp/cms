@@ -11,11 +11,12 @@ import { DataTable } from "@/components/data-table";
 type Message = {
   id: string;
   content: string;
-  senderId: string;
-  senderName: string | null;
-  senderRole: "user" | "admin";
-  channelId: string;
+  senderId: string | null;
+  senderEmail: string | null;
+  isAdmin: boolean;
   createdAt: string;
+  user?: { name: string | null };
+  contact?: { name: string | null };
 };
 
 export default function MessagesPage() {
@@ -42,22 +43,24 @@ export default function MessagesPage() {
       ),
     },
     {
-      accessorKey: "senderName",
       header: "Sender",
-      cell: ({ row }) => row.original.senderName || row.original.senderId,
+      cell: ({ row }) => {
+        const m = row.original;
+        return m.user?.name || m.contact?.name || m.senderEmail || "System";
+      },
     },
     {
-      accessorKey: "senderRole",
+      accessorKey: "isAdmin",
       header: "Role",
       cell: ({ row }) => (
-        <Badge variant={row.original.senderRole === "admin" ? "default" : "outline"}>
-          {row.original.senderRole}
+        <Badge variant={row.original.isAdmin ? "default" : "outline"}>
+          {row.original.isAdmin ? "admin" : "user"}
         </Badge>
       ),
     },
     {
-      accessorKey: "channelId",
-      header: "Channel",
+      accessorKey: "senderEmail",
+      header: "Channel/Email",
     },
     {
       accessorKey: "createdAt",

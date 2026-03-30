@@ -8,10 +8,11 @@ import { Resend } from "resend";
 export default async function AdminPage() {
   const resend = new Resend(process.env.RESEND_API_KEY || "re_dummy");
   
-  const [contactsCount, emailsCount, usersCount, webhooksRes] = await Promise.all([
+  const [contactsCount, emailsCount, usersCount, tokensCount, webhooksRes] = await Promise.all([
     prisma.contact.count(),
     prisma.webhookEmail.count(),
     prisma.user.count(),
+    prisma.verificationToken.count(),
     process.env.RESEND_API_KEY ? resend.webhooks.list() : Promise.resolve({ data: [] }),
   ]);
 
@@ -21,6 +22,7 @@ export default async function AdminPage() {
       stat.id === "contacts" ? contactsCount :
       stat.id === "emails" ? emailsCount :
       stat.id === "webhooks" ? ((webhooksRes.data as any)?.data?.length || 0) :
+      stat.id === "tokens" ? tokensCount :
       usersCount,
   }));
 

@@ -22,10 +22,10 @@ export async function POST(request: Request) {
     await prisma.message.create({
       data: {
         content: message,
-        senderId: email,
-        senderName: name,
-        channelId: email,
-        senderRole: "user",
+        senderId: null, // Public users don't have a user account
+        senderEmail: email,
+        contactId: contact.id,
+        isAdmin: false,
       },
     });
 

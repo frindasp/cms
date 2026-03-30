@@ -68,6 +68,11 @@ const items = [
     icon: MessageSquare,
   },
   {
+    title: "Verification Tokens",
+    url: APP_ROUTES.ADMIN.VERIFICATION_TOKENS,
+    icon: Shield,
+  },
+  {
     title: "Real-time Chat",
     url: "/admin/realtime-demo",
     icon: Send,

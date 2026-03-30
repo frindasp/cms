@@ -19,6 +19,10 @@ export async function GET() {
 
   try {
     const messages = await prisma.message.findMany({
+      include: {
+        user: { select: { name: true } },
+        contact: { select: { name: true } },
+      },
       orderBy: { createdAt: "desc" },
     });
 
@@ -26,13 +30,15 @@ export async function GET() {
 
     messages.forEach((msg: (typeof messages)[number]) => {
       const key =
-        msg.channelId ??
         msg.senderEmail ??
         msg.contactId ??
         `message-${msg.id}`;
-      const displayEmail = msg.channelId ?? msg.senderEmail ?? key;
+      const displayEmail = msg.senderEmail ?? key;
+      const isAdmin = msg.isAdmin;
       const displayName =
-        msg.senderRole === "user" && msg.senderName ? msg.senderName : displayEmail;
+        !isAdmin && (msg.contact?.name || msg.user?.name) 
+          ? (msg.contact?.name || msg.user?.name)! 
+          : displayEmail;
 
       if (!messageThreadsMap.has(key)) {
         messageThreadsMap.set(key, {
@@ -53,8 +59,8 @@ export async function GET() {
         existing.lastMessageAt = msg.createdAt;
       }
 
-      if (msg.senderRole === "user" && msg.senderName) {
-        existing.name = msg.senderName;
+      if (!isAdmin && (msg.contact?.name || msg.user?.name)) {
+        existing.name = (msg.contact?.name || msg.user?.name)!;
       }
 
       existing.messageCount += 1;

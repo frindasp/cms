@@ -19,6 +19,10 @@ export async function GET(request: Request) {
       prisma.message.findMany({
         skip,
         take: limit,
+        include: {
+          user: { select: { name: true, email: true } },
+          contact: { select: { name: true, email: true } },
+        },
         orderBy: { createdAt: "desc" },
       }),
       prisma.message.count(),
@@ -53,9 +57,11 @@ export async function POST(request: Request) {
       data: {
         content,
         senderId: (session.user as any).id,
-        senderName: session.user.name,
-        channelId: channel,
-        senderRole: "admin",
+        senderEmail: session.user.email,
+        isAdmin: true,
+      },
+      include: {
+        user: { select: { name: true } },
       },
     });
 
@@ -63,9 +69,9 @@ export async function POST(request: Request) {
       id: savedMessage.id,
       content: savedMessage.content,
       senderId: savedMessage.senderId,
-      senderRole: savedMessage.senderRole,
+      senderRole: "admin",
       sender: {
-        name: savedMessage.senderName,
+         name: savedMessage.user?.name || session.user.name,
       },
       createdAt: savedMessage.createdAt.toISOString(),
     };

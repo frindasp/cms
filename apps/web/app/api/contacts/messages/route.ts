@@ -19,7 +19,11 @@ export async function GET(request: Request) {
   try {
     // Fetch all chat records for this conversation channel.
     const messages = await prisma.message.findMany({
-      where: { channelId },
+      where: { senderEmail: channelId },
+      include: {
+        user: { select: { name: true } },
+        contact: { select: { name: true } },
+      },
       orderBy: { createdAt: "asc" },
     });
 
@@ -33,9 +37,9 @@ export async function GET(request: Request) {
       id: m.id,
       content: m.content,
       senderId: m.senderId,
-      senderRole: m.senderRole,
+      senderRole: m.isAdmin ? "admin" : "user",
       sender: {
-        name: m.senderName,
+        name: m.user?.name || m.contact?.name || m.senderEmail,
       },
       createdAt: m.createdAt,
     }));

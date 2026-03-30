@@ -21,9 +21,8 @@ export async function POST(request: Request) {
       data: {
         content,
         senderId: (session.user as any).id,
-        senderName: session.user.name,
-        channelId: email,
-        senderRole: "admin",
+        senderEmail: session.user.email,
+        isAdmin: true,
       },
     });
 
