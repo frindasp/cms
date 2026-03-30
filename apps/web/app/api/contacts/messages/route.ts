@@ -17,9 +17,21 @@ export async function GET(request: Request) {
     return ApiResponse.error("channelId is required", 400);
   }
   try {
-    // Fetch all chat records for this conversation channel.
+    // 1. Get all contact IDs for this email to group messages properly
+    const userContacts = await prisma.contact.findMany({
+      where: { email: channelId },
+      select: { id: true }
+    });
+    const contactIds = userContacts.map(c => c.id);
+
+    // 2. Fetch all messages (including admin replies with this contactId or original user messages)
     const messages = await prisma.message.findMany({
-      where: { senderEmail: channelId },
+      where: {
+        OR: [
+          { senderEmail: channelId },
+          { contactId: { in: contactIds } }
+        ]
+      },
       include: {
         user: { select: { name: true } },
         contact: { select: { name: true } },
@@ -39,7 +51,9 @@ export async function GET(request: Request) {
       senderId: m.senderId,
       senderRole: m.isAdmin ? "admin" : "user",
       sender: {
-        name: m.user?.name || m.contact?.name || m.senderEmail,
+        name: m.isAdmin 
+          ? `Admin - ${m.user?.name || "Support"}` 
+          : (m.contact?.name || m.user?.name || m.senderEmail),
       },
       createdAt: m.createdAt,
     }));

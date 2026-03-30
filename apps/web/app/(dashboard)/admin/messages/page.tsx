@@ -46,7 +46,8 @@ export default function MessagesPage() {
       header: "Sender",
       cell: ({ row }) => {
         const m = row.original;
-        return m.user?.name || m.contact?.name || m.senderEmail || "System";
+        const name = m.user?.name || m.contact?.name || m.senderEmail || "System";
+        return m.isAdmin && m.user?.name ? `Admin - ${name}` : name;
       },
     },
     {

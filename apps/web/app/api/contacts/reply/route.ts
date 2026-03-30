@@ -10,18 +10,19 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { email, content } = await request.json();
+    const { email, content, contactId } = await request.json();
 
-    if (!email || !content) {
-      return ApiResponse.error("Email and content are required", 400);
+    if ((!email && !contactId) || !content) {
+      return ApiResponse.error("Email/ContactId and content are required", 400);
     }
 
-    // Store admin reply as a message
+    // Store admin reply as a message linked to the conversation via contactId
     const message = await prisma.message.create({
       data: {
         content,
         senderId: (session.user as any).id,
         senderEmail: session.user.email,
+        contactId: contactId,
         isAdmin: true,
       },
     });
@@ -31,7 +32,7 @@ export async function POST(request: Request) {
       content,
       senderId: (session.user as any).id,
       sender: {
-        name: session.user.name,
+        name: `Admin - ${session.user.name || "Support"}`,
       },
       senderRole: "admin",
       createdAt: message.createdAt,

@@ -31,10 +31,11 @@ type Thread = {
   lastMessageAt: string;
   messageCount: number;
   source: ThreadSource;
+  contactId: string | null;
 };
 
 export default function ConversationChat() {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const [messageThreads, setMessageThreads] = useState<Thread[]>([]);
   const [contactThreads, setContactThreads] = useState<Thread[]>([]);
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
@@ -139,7 +140,11 @@ export default function ConversationChat() {
       const res = await fetch("/api/contacts/reply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: selectedThread.email, content: input }),
+        body: JSON.stringify({ 
+          email: selectedThread.email, 
+          content: input,
+          contactId: selectedThread.contactId 
+        }),
       });
 
       if (res.ok) {
@@ -249,6 +254,8 @@ export default function ConversationChat() {
               ) : (
                 messages.map((msg, idx) => {
                   const isAdmin = msg.senderRole === "admin";
+                  const isMe = isAdmin && session?.user && (msg.senderId === (session.user as any).id);
+                  
                   return (
                     <div
                       key={msg.id || idx}
@@ -261,7 +268,7 @@ export default function ConversationChat() {
                         <p className="text-sm">{msg.content}</p>
                       </div>
                       <span className="text-[10px] text-muted-foreground mt-1 opacity-60">
-                        {isAdmin ? "You" : (msg.sender.name || "User")} • {new Date(msg.createdAt).toLocaleString([], { hour: "2-digit", minute: "2-digit" })}
+                        {isMe ? "You" : (msg.sender.name || "User")} • {new Date(msg.createdAt).toLocaleString([], { hour: "2-digit", minute: "2-digit" })}
                       </span>
                     </div>
                   );

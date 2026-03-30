@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get("limit") || "10");
     const skip = (page - 1) * limit;
 
-    const [data, total] = await Promise.all([
+    const [messages, total] = await Promise.all([
       prisma.message.findMany({
         skip,
         take: limit,
@@ -28,8 +28,17 @@ export async function GET(request: Request) {
       prisma.message.count(),
     ]);
 
+    const normalizedMessages = messages.map((m: (typeof messages)[number]) => ({
+      ...m,
+      sender: {
+        name: m.isAdmin 
+          ? `Admin - ${m.user?.name || "Support"}` 
+          : (m.contact?.name || m.user?.name || m.senderEmail),
+      },
+    }));
+
     return ApiResponse.success({
-      data,
+      data: normalizedMessages,
       total,
       page,
       limit,
@@ -71,7 +80,7 @@ export async function POST(request: Request) {
       senderId: savedMessage.senderId,
       senderRole: "admin",
       sender: {
-         name: savedMessage.user?.name || session.user.name,
+         name: `Admin - ${savedMessage.user?.name || session.user.name || "Support"}`,
       },
       createdAt: savedMessage.createdAt.toISOString(),
     };
