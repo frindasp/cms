@@ -13,14 +13,18 @@ export async function PATCH(
   }
 
   try {
-    const { title } = await request.json();
+    const { title, userAlias, adminAlias } = await request.json();
     const { id } = await params;
 
     if (!id) return ApiResponse.error("Conversation ID is required", 400);
 
     const conversation = await prisma.conversation.update({
       where: { id },
-      data: { title },
+      data: { 
+        title: title !== undefined ? title : undefined,
+        userAlias: userAlias !== undefined ? userAlias : undefined,
+        adminAlias: adminAlias !== undefined ? adminAlias : undefined,
+      },
     });
 
     await logActivity({
@@ -49,8 +53,25 @@ export async function POST(
 
   try {
     const { id } = await params;
+    const currentUserId = (session.user as any).id;
 
-    // Mark all non-admin messages in this conversation as read
+    // Update per-admin read state
+    await prisma.conversationReadState.upsert({
+      where: {
+        conversationId_userId: {
+          conversationId: id,
+          userId: currentUserId,
+        }
+      },
+      update: { lastReadAt: new Date() },
+      create: {
+        conversationId: id,
+        userId: currentUserId,
+        lastReadAt: new Date(),
+      }
+    });
+
+    // Still update the legacy isRead for backward compatibility with User view
     await prisma.message.updateMany({
       where: {
         conversationId: id,

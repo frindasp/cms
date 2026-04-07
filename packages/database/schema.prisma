@@ -16,6 +16,15 @@ model Contact {
   messages  Message[]
 }
 
+model ConversationReadState {
+  id             String   @id @default(cuid())
+  conversationId String
+  userId         String
+  lastReadAt     DateTime @default(now())
+
+  @@unique([conversationId, userId])
+}
+
 model WebhookEmail {
   id        String   @id @default(cuid())
   from      String?
@@ -61,9 +70,10 @@ model Conversation {
   name      String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+  userAlias  String?
+  adminAlias String?
   messages  Message[]
 
-  @@unique([email, roleId])
 }
 
 model Message {

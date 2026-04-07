@@ -38,6 +38,8 @@ type Thread = {
   source: ThreadSource;
   contactId: string | null;
   roleId: string | null;
+  userAlias?: string | null;
+  adminAlias?: string | null;
 };
 
 type UserDetail = {
@@ -64,7 +66,10 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
   const [loadingThreads, setLoadingThreads] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [isEditingAlias, setIsEditingAlias] = useState(false);
   const [newTitle, setNewTitle] = useState("");
+  const [userNickname, setUserNickname] = useState("");
+  const [adminNickname, setAdminNickname] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // New Chat states
@@ -198,6 +203,27 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
     }
   }, [messages]);
 
+  const updateAliases = async () => {
+    if (!selectedThread) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/contacts/conversations/${selectedThread.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userAlias: userNickname, adminAlias: adminNickname }),
+      });
+      if (res.ok) {
+        toast.success("Nicknames updated");
+        setIsEditingAlias(false);
+        fetchThreads();
+      }
+    } catch (err) {
+      toast.error("Failed to update nicknames");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const updateTitle = async () => {
     if (!selectedThread || !newTitle.trim()) return;
     setLoading(true);
@@ -310,14 +336,14 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
         <div className="min-w-0 flex-1">
           <div className="flex justify-between items-start">
             <p className={cn("text-sm truncate text-foreground", thread.unreadCount > 0 ? "font-black" : "font-semibold")}>
-                {thread.title || thread.name || "Belum diberi judul"}
+                {thread.title || thread.userAlias || thread.name || "Belum diberi judul"}
             </p>
             <span className="text-[10px] text-muted-foreground whitespace-nowrap ml-2 opacity-70">
               {new Date(thread.lastMessageAt).toLocaleDateString([], { month: "short", day: "numeric" })}
             </span>
           </div>
           <p className={cn("text-[11px] truncate mt-0.5", thread.unreadCount > 0 ? "text-primary font-bold" : "text-muted-foreground opacity-60")}>
-              {thread.lastMessage}
+              {thread.adminAlias ? `[${thread.adminAlias}] ` : ""}{thread.lastMessage}
           </p>
           <div className="flex items-center justify-between mt-2">
             <div className="flex items-center gap-2">
@@ -472,11 +498,39 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
                         { (session?.user as any)?.role === "ADMIN" && <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-40 transition-opacity" />}
                     </div>
                   )}
-                  <p className="text-[10px] text-muted-foreground font-medium opacity-60 truncate">Shared with {selectedThread.name} ({selectedThread.email})</p>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <p className="text-[10px] text-muted-foreground font-medium opacity-60 truncate">Shared with {selectedThread.userAlias || selectedThread.name} ({selectedThread.email})</p>
+                    <button onClick={() => {
+                      setUserNickname(selectedThread.userAlias || "");
+                      setAdminNickname(selectedThread.adminAlias || "");
+                      setIsEditingAlias(!isEditingAlias);
+                    }} className="opacity-20 hover:opacity-100 p-0.5">
+                      <UserCircle className="h-3 w-3" />
+                    </button>
+                  </div>
                 </div>
               </div>
               
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 relative">
+                 {isEditingAlias && (
+                   <div className="absolute right-0 top-12 z-50 bg-background border rounded-2xl shadow-2xl p-4 w-64 animate-in fade-in zoom-in-95">
+                      <p className="text-[10px] font-bold uppercase tracking-widest mb-3 opacity-60">Nicknames</p>
+                      <div className="space-y-3 font-normal">
+                         <div>
+                           <label className="text-[9px] font-bold ml-1 mb-1">User Nickname</label>
+                           <Input value={userNickname} onChange={e => setUserNickname(e.target.value)} className="h-9 text-xs rounded-xl" />
+                         </div>
+                         <div>
+                           <label className="text-[9px] font-bold ml-1 mb-1">Admin Nickname (You)</label>
+                           <Input value={adminNickname} onChange={e => setAdminNickname(e.target.value)} className="h-9 text-xs rounded-xl" />
+                         </div>
+                         <div className="flex gap-2 pt-1">
+                           <Button size="sm" className="h-8 flex-1 rounded-xl text-xs font-bold" onClick={updateAliases}>Save</Button>
+                           <Button size="sm" variant="ghost" className="h-8 rounded-xl text-xs" onClick={() => setIsEditingAlias(false)}>Cancel</Button>
+                         </div>
+                      </div>
+                   </div>
+                 )}
                  <div className="hidden md:flex flex-col items-end mr-4">
                      <span className="text-[10px] font-bold text-green-500 animate-pulse uppercase tracking-widest leading-none">Live Connection</span>
                      <span className="text-[8px] opacity-40 uppercase">Channel: {selectedThread.id.slice(0,8)}...</span>
@@ -502,17 +556,24 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
                         isAdmin ? "ml-auto items-end" : "mr-auto items-start"
                       )}
                     >
-                      <div className={cn(
-                          "px-4 py-2.5 rounded-2xl shadow-sm text-sm relative group mb-1", 
-                          isAdmin 
-                            ? "bg-primary text-primary-foreground rounded-tr-none shadow-primary/10" 
-                            : "bg-background border border-primary/10 rounded-tl-none shadow-black/5"
-                        )}>
-                        <p className="leading-relaxed">{msg.content}</p>
+                      <div className="max-w-full">
+                        {!isMe && (
+                          <span className="text-[10px] font-bold mb-1 block opacity-50 px-1">
+                            {isAdmin ? `Admin - ${selectedThread?.adminAlias || msg.sender.name || "Support"}` : (selectedThread?.userAlias || msg.sender.name || "Guest")}
+                          </span>
+                        )}
+                        <div className={cn(
+                            "px-4 py-2.5 rounded-2xl shadow-sm text-sm relative group mb-1", 
+                            isAdmin 
+                              ? "bg-primary text-primary-foreground rounded-tr-none shadow-primary/10" 
+                              : "bg-background border border-primary/10 rounded-tl-none shadow-black/5"
+                          )}>
+                          <p className="leading-relaxed">{msg.content}</p>
+                        </div>
                       </div>
                       <div className="flex items-center gap-1 opacity-40">
                          <span className={cn("text-[9px] font-bold tracking-tight", isAdmin ? "text-primary italic" : "")}>
-                            {isMe ? "You" : (msg.sender.name || "Guest")}
+                            {isMe ? "You" : (isAdmin ? (selectedThread?.adminAlias || msg.sender.name || "Support") : (selectedThread?.userAlias || msg.sender.name || "Guest"))}
                          </span>
                          <span className="text-[9px]">•</span>
                          <span className="text-[9px]">

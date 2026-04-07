@@ -58,21 +58,31 @@ export async function POST(request: Request) {
       data: { updatedAt: new Date() }
     });
 
+    const adminName = (conversation as any).adminAlias || session.user.name || "Support";
+    const displayName = `Admin - ${adminName}`;
+
     const pusherMessage = {
       id: message.id,
       content,
       senderId: (session.user as any).id,
       sender: {
-        name: `Admin - ${session.user.name || "Support"}`,
+        name: displayName,
       },
       senderRole: "admin",
-      createdAt: message.createdAt,
+      isAdmin: true,
+      createdAt: message.createdAt.toISOString(),
       conversationId: conversation.id,
     };
 
-    // Trigger on the specific conversation channel using the stable ID
+    // Trigger on the specific conversation channel
     const channelName = `conversation-${conversation.id}`;
     await pusherServer.trigger(channelName, "new-message", pusherMessage);
+
+    // Also notify global admin-notifications for list updates
+    await pusherServer.trigger("admin-notifications", "conversation-updated", {
+      conversationId: conversation.id,
+      lastMessage: pusherMessage,
+    });
 
     return ApiResponse.success({ data: message });
   } catch (error: any) {

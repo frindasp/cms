@@ -31,33 +31,53 @@ export async function GET() {
             contact: { select: { name: true, email: true } },
           },
         },
-        _count: {
-          select: { 
-            messages: {
-              where: { isAdmin: false, isRead: false }
-            }
-          }
-        }
       },
       orderBy: { updatedAt: "desc" },
     });
 
-    const allThreads: any[] = conversations.map(conv => {
+    const currentUserId = (session.user as any).id;
+    const readStates = await prisma.conversationReadState.findMany({
+      where: {
+        conversationId: { in: conversations.map(c => c.id) },
+        userId: currentUserId,
+      }
+    });
+
+    const readStateMap = readStates.reduce<Record<string, Date>>((acc, s) => {
+      acc[s.conversationId] = s.lastReadAt;
+      return acc;
+    }, {});
+
+    const allThreadsPromise = conversations.map(async conv => {
       const lastMsg = conv.messages[0];
       const roleName = lastMsg?.user?.role?.name;
+      
+      const lastRead = readStateMap[conv.id] || new Date(0);
+      const unreadCount = await prisma.message.count({
+        where: {
+          conversationId: conv.id,
+          isAdmin: false, // Admin only cares about messages from User
+          createdAt: { gt: lastRead }
+        }
+      });
+
       return {
         id: conv.id,
         email: conv.email,
         title: conv.title,
-        name: `${conv.name || conv.email}${roleName ? ` (${roleName})` : ""}`,
+        userAlias: conv.userAlias,
+        adminAlias: conv.adminAlias,
+        name: `${conv.userAlias || conv.name || conv.email}${roleName ? ` (${roleName})` : ""}`,
         lastMessage: lastMsg?.content || "No messages",
         lastMessageAt: lastMsg?.createdAt || conv.createdAt,
-        messageCount: conv.messages.length, // Total messages count if needed separately
-        unreadCount: (conv._count as any).messages,
+        messageCount: await prisma.message.count({ where: { conversationId: conv.id } }),
+        unreadCount: unreadCount,
         source: "message",
         contactId: lastMsg?.contactId || null,
       };
     });
+
+    const allThreads = await Promise.all(allThreadsPromise);
 
     return ApiResponse.success({
       data: {
@@ -86,12 +106,10 @@ export async function POST(request: Request) {
 
     // 1. Find or create conversation with correct roleId
     // If same email but different role, it will be a distinct conversation
-    let conversation = await prisma.conversation.findUnique({
+    let conversation = await prisma.conversation.findFirst({
       where: {
-        email_roleId: {
-          email,
-          roleId: roleId || null
-        }
+        email,
+        roleId: roleId || null
       }
     });
 
