@@ -15,26 +15,29 @@ export const authConfig = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
 
-        const user = await prisma.user.findFirst({
+        const users = await prisma.user.findMany({
           where: { email: credentials.email as string },
           include: { role: true },
         })
 
-        if (!user) return null
+        if (!users || users.length === 0) return null
 
-        const isValidPassword = await bcrypt.compare(
-          credentials.password as string,
-          user.password
-        )
-
-        if (!isValidPassword) return null
-
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role.name,
+        for (const user of users) {
+            const isValidPassword = await bcrypt.compare(
+                credentials.password as string,
+                user.password
+            )
+            if (isValidPassword) {
+                return {
+                    id: user.id,
+                    name: user.name,
+                    email: user.email,
+                    role: user.role.name,
+                }
+            }
         }
+
+        return null
       },
     }),
   ],

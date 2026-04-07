@@ -21,7 +21,7 @@ export async function GET(request: Request) {
       messages = await prisma.message.findMany({
         where: { conversationId: id },
         include: {
-          user: { select: { name: true } },
+          user: { include: { role: true } },
           contact: { select: { id: true, name: true, email: true } },
         },
         orderBy: { createdAt: "asc" },
@@ -54,7 +54,7 @@ export async function GET(request: Request) {
           ]
         },
         include: {
-          user: { select: { name: true } },
+          user: { include: { role: true } },
           contact: { select: { name: true } },
         },
         orderBy: { createdAt: "asc" },
@@ -70,18 +70,21 @@ export async function GET(request: Request) {
 
 
 
-    const normalizedMessages = messages.map((m: (typeof messages)[number]) => ({
-      id: m.id,
-      content: m.content,
-      senderId: m.senderId,
-      senderRole: m.isAdmin ? "admin" : "user",
-      sender: {
-        name: m.isAdmin 
-          ? `Admin - ${m.user?.name || "Support"}` 
-          : (m.contact?.name || m.user?.name || m.senderEmail),
-      },
-      createdAt: m.createdAt,
-    }));
+    const normalizedMessages = messages.map((m: any) => {
+      const roleName = m.user?.role?.name;
+      return {
+        id: m.id,
+        content: m.content,
+        senderId: m.senderId,
+        senderRole: m.isAdmin ? "admin" : "user",
+        sender: {
+          name: m.isAdmin 
+            ? `Admin - ${m.user?.name || "Support"}` 
+            : `${m.contact?.name || m.user?.name || m.senderEmail}${roleName ? ` (${roleName})` : ""}`,
+        },
+        createdAt: m.createdAt,
+      };
+    });
 
     const normalizedContacts = contacts.map((c: (typeof contacts)[number]) => ({
       id: c.id,

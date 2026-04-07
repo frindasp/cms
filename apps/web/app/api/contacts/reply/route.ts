@@ -10,16 +10,23 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { email, content, contactId } = await request.json();
+    const { email, content, contactId, conversationId } = await request.json();
 
-    if ((!email && !contactId) || !content) {
-      return ApiResponse.error("Email/ContactId and content are required", 400);
+    if ((!email && !conversationId) || !content) {
+      return ApiResponse.error("Email/ID and content are required", 400);
     }
 
     // 1. Find or create conversation
-    let conversation = await prisma.conversation.findUnique({
-      where: { email }
-    });
+    let conversation = null;
+    if (conversationId) {
+      conversation = await prisma.conversation.findUnique({
+        where: { id: conversationId }
+      });
+    } else {
+      conversation = await prisma.conversation.findFirst({
+        where: { email }
+      });
+    }
 
     if (!conversation) {
       conversation = await prisma.conversation.create({

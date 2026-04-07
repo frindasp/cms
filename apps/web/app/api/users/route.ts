@@ -12,7 +12,7 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const page = parseInt(searchParams.get("page") || "1");
-  const limit = parseInt(searchParams.get("limit") || "10");
+  const limit = parseInt(searchParams.get("limit") || "50");
   const skip = (page - 1) * limit;
 
   const [data, total] = await Promise.all([
@@ -20,7 +20,7 @@ export async function GET(request: Request) {
       skip,
       take: limit,
       include: { role: true },
-      orderBy: { createdAt: "desc" },
+      orderBy: { name: "asc" },
     }),
     prisma.user.count(),
   ]);

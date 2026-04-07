@@ -26,8 +26,8 @@ export default function RealtimeLiveChat() {
             <TabsTrigger value="chat" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-300">
                Public Chat
             </TabsTrigger>
-            <TabsTrigger value="contact" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-300">
-               Contact Form
+            <TabsTrigger value="new-chat" className="rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-300">
+               Start New Chat
             </TabsTrigger>
           </TabsList>
         </div>
@@ -40,8 +40,8 @@ export default function RealtimeLiveChat() {
           <ConversationChat />
         </TabsContent>
 
-        <TabsContent value="contact" className="animate-in fade-in slide-in-from-bottom-5 duration-500">
-          <ContactForm />
+        <TabsContent value="new-chat" className="animate-in fade-in slide-in-from-bottom-5 duration-500">
+          <ConversationChat defaultTab="new-chat" />
         </TabsContent>
       </Tabs>
 
