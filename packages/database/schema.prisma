@@ -34,17 +34,20 @@ model Role {
 }
 
 model User {
-  id               String          @id @default(cuid())
-  name             String?
-  email            String
-  password         String
-  roleId           String
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-  twoFactorEnabled Boolean         @default(false)
-  Authenticator    Authenticator[]
-  messages         Message[]
-  role             Role            @relation(fields: [roleId], references: [id])
+  id                  String                @id @default(cuid())
+  name                String?
+  email               String
+  password            String
+  roleId              String
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  twoFactorEnabled    Boolean               @default(false)
+  mfaDismissedAt      DateTime?
+  Authenticator       Authenticator[]
+  HistoryActivityUser HistoryActivityUser[]
+  messages            Message[]
+  TotpAuthenticator   TotpAuthenticator[]
+  role                Role                  @relation(fields: [roleId], references: [id])
 
   @@unique([email, roleId])
   @@index([roleId], map: "User_roleId_fkey")
@@ -84,7 +87,42 @@ model Authenticator {
   credentialDeviceType String
   credentialBackedUp   Boolean
   transports           String?
+  enabled              Boolean @default(true)
   User                 User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model HistoryActivityUser {
+  id          String   @id
+  userId      String?
+  action      String
+  description String?  @db.Text
+  route       String?
+  method      String?
+  ipAddress   String?
+  deviceType  String?
+  userAgent   String?
+  location    String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  User        User?    @relation(fields: [userId], references: [id])
+
+  @@index([action])
+  @@index([createdAt])
+  @@index([userId])
+}
+
+model TotpAuthenticator {
+  id            String   @id
+  userId        String
+  secret        String
+  enabled       Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime
+  name          String   @default("Authenticator")
+  setupComplete Boolean  @default(false)
+  User          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }

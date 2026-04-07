@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { DataTable } from "@/components/data-table";
 import { ColumnDef } from "@tanstack/react-table";
@@ -145,12 +146,12 @@ export default function UsersPage() {
       cell: ({ row }) => {
         const user = row.original;
         return (
-          <button
-            onClick={() => setSecurityUser({ id: user.id, name: user.name })}
+          <Link
+            href={`/admin/users/${user.id}`}
             className="hover:underline text-primary font-medium focus:outline-none"
           >
             {user.name || "N/A"}
-          </button>
+          </Link>
         );
       },
     },

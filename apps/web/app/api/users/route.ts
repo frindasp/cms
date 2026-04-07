@@ -2,6 +2,7 @@ import { prisma } from "@workspace/database";
 import { auth } from "@/auth";
 import * as bcrypt from "bcryptjs";
 import { ApiResponse } from "@/lib/api-response";
+import { logActivity } from "@/lib/activity-log";
 
 export async function GET(request: Request) {
   const session = await auth();
@@ -71,6 +72,16 @@ export async function POST(request: Request) {
     });
 
     const { password: _, ...sanitizedUser } = user;
+
+    await logActivity({
+      userId: session.user?.id,
+      action: "CREATE_USER",
+      description: `Created user ${user.email} with role ${user.role.name}`,
+      route: "/api/users",
+      method: "POST",
+      metadata: { targetUserId: user.id }
+    });
+
     return ApiResponse.success(sanitizedUser, 201);
   } catch (error) {
     return ApiResponse.internalError(error);

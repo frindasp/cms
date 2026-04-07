@@ -5,12 +5,12 @@ import ContactForm from "@/components/contact-form";
 import ConversationChat from "@/components/conversation-chat";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs";
 
-export default function RealtimeDemo() {
+export default function RealtimeLiveChat() {
   return (
     <div className="space-y-12 max-w-6xl mx-auto py-8 px-4">
       <div className="text-center space-y-4">
         <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-          Real-time Experience
+          Real-time Live Chat
         </h1>
         <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
           Experience the power of real-time communication with Pusher. Grouping contacts by email for better conversation management!

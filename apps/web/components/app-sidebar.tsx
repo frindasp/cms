@@ -43,6 +43,11 @@ const items = [
     icon: LayoutDashboard,
   },
   {
+    title: "Real-time Live Chat",
+    url: APP_ROUTES.ADMIN.LIVE_CHAT,
+    icon: Send,
+  },
+  {
     title: "Contacts",
     url: APP_ROUTES.ADMIN.CONTACTS,
     icon: Contact,
@@ -73,9 +78,9 @@ const items = [
     icon: Shield,
   },
   {
-    title: "Real-time Chat",
-    url: "/admin/realtime-demo",
-    icon: Send,
+    title: "User Activity",
+    url: APP_ROUTES.ADMIN.ACTIVITY,
+    icon: LayoutDashboard,
   },
 ];
 

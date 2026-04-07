@@ -15,6 +15,8 @@ export const APP_ROUTES = {
       RECEIVED: "/admin/resend/received",
     },
     VERIFICATION_TOKENS: "/admin/verification-tokens",
+    ACTIVITY: "/admin/activity",
+    LIVE_CHAT: "/admin/realtime-livechat",
   },
 };
 
@@ -29,6 +31,7 @@ export const API_ROUTES = {
     RECEIVED: "/api/resend/received",
   },
   VERIFICATION_TOKENS: "/api/verification-tokens",
+  ACTIVITY: "/api/activities",
 };
 
 export const DASHBOARD_STATS = [

@@ -2,6 +2,7 @@ import { prisma } from "@workspace/database";
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 import * as bcrypt from "bcryptjs";
+import { logActivity } from "@/lib/activity-log";
 
 export async function GET(
   request: Request,
@@ -59,6 +60,15 @@ export async function PATCH(
     });
 
     const { password: _, ...sanitizedUser } = user;
+
+    await logActivity({
+      userId: session.user?.id,
+      action: "UPDATE_USER",
+      description: `Updated user ${user.email}`,
+      route: `/api/users/${id}`,
+      method: "PATCH",
+    });
+
     return NextResponse.json(sanitizedUser);
   } catch (error: any) {
     console.error("Update user error:", error);
@@ -85,6 +95,14 @@ export async function DELETE(
     // For now simple delete
     await prisma.user.delete({
       where: { id },
+    });
+
+    await logActivity({
+      userId: session.user?.id,
+      action: "DELETE_USER",
+      description: `Deleted user with ID ${id}`,
+      route: `/api/users/${id}`,
+      method: "DELETE",
     });
 
     return NextResponse.json({ success: true });
