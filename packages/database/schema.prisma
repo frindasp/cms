@@ -21,6 +21,7 @@ model ConversationReadState {
   conversationId String
   userId         String
   lastReadAt     DateTime @default(now())
+  isRead         Boolean  @default(true)
 
   @@unique([conversationId, userId])
 }
@@ -63,32 +64,31 @@ model User {
 }
 
 model Conversation {
-  id        String    @id @default(cuid())
-  email     String
-  roleId    String?
-  title     String?
-  name      String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  userAlias  String?
+  id         String    @id @default(cuid())
+  email      String
+  name       String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  roleId     String?
+  title      String?
   adminAlias String?
-  messages  Message[]
-
+  userAlias  String?
+  messages   Message[]
 }
 
 model Message {
-  id              String        @id @default(cuid())
-  content         String        @db.Text
-  senderId        String?
-  createdAt       DateTime      @default(now())
-  contactId       String?
-  conversationId  String?
-  isAdmin         Boolean       @default(false)
-  isRead          Boolean       @default(false)
-  senderEmail     String?
-  contact         Contact?      @relation(fields: [contactId], references: [id])
-  user            User?         @relation(fields: [senderId], references: [id])
-  conversation    Conversation? @relation(fields: [conversationId], references: [id])
+  id             String        @id @default(cuid())
+  content        String        @db.Text
+  senderId       String?
+  createdAt      DateTime      @default(now())
+  contactId      String?
+  isAdmin        Boolean       @default(false)
+  senderEmail    String?
+  conversationId String?
+  isRead         Boolean       @default(false)
+  contact        Contact?      @relation(fields: [contactId], references: [id])
+  conversation   Conversation? @relation(fields: [conversationId], references: [id])
+  user           User?         @relation(fields: [senderId], references: [id])
 
   @@index([contactId], map: "Message_contactId_fkey")
   @@index([senderId], map: "Message_senderId_fkey")

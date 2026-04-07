@@ -16,7 +16,7 @@ export const APP_ROUTES = {
     },
     VERIFICATION_TOKENS: "/admin/verification-tokens",
     ACTIVITY: "/admin/activity",
-    LIVE_CHAT: "/admin/realtime-livechat",
+    CHAT: "/admin/chat",
   },
 };
 

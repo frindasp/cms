@@ -43,6 +43,11 @@ const items = [
     icon: LayoutDashboard,
   },
   {
+    title: "Chat",
+    url: APP_ROUTES.ADMIN.CHAT,
+    icon: MessageSquare,
+  },
+  {
     title: "Contacts",
     url: APP_ROUTES.ADMIN.CONTACTS,
     icon: Contact,
