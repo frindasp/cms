@@ -2,6 +2,7 @@ import { prisma } from "@workspace/database";
 import { auth } from "@/auth";
 import { ApiResponse } from "@/lib/api-response";
 import { logActivity } from "@/lib/activity-log";
+import { pusherServer } from "@/lib/pusher";
 
 type Thread = {
   email: string;
@@ -115,8 +116,27 @@ export async function POST(request: Request) {
         isAdmin: session.user.role === "ADMIN",
       },
     });
+    
+    // 3. Trigger Pusher so the user sees the new message/thread in real-time
+    try {
+      const pusherMessage = {
+        ...message,
+        senderRole: "admin",
+        sender: { name: `Admin - ${session.user.name || "Support"}` }
+      };
+      // Try triggering to user-specific channel as well if they aren't on conversation ID yet
+      const userChannel = `user-${email.replace(/[^a-zA-Z0-9]/g, '_')}`;
+      const convChannel = `conversation-${conversation.id}`;
+      
+      await Promise.all([
+        pusherServer.trigger(convChannel, "new-message", pusherMessage),
+        pusherServer.trigger(userChannel, "conversation-created", { conversation, message: pusherMessage })
+      ]);
+    } catch (e) {
+      console.error("Pusher trigger failed in conversation creation:", e);
+    }
 
-    // 3. Log activity
+    // 4. Log activity
     await logActivity({
       userId: session.user.id,
       action: "START_CONVERSATION",
