@@ -9,41 +9,66 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
-  // Conversation identity uses channelId in Message table.
-  // For contact-form compatibility, channelId currently equals user email.
-  const channelId = searchParams.get("channelId") ?? searchParams.get("email");
+  const id = searchParams.get("id");
+  const email = searchParams.get("email") || searchParams.get("channelId");
 
-  if (!channelId) {
-    return ApiResponse.error("channelId is required", 400);
-  }
   try {
-    // 1. Get all contact IDs for this email to group messages properly
-    const userContacts = await prisma.contact.findMany({
-      where: { email: channelId },
-      select: { id: true }
-    });
-    const contactIds = userContacts.map(c => c.id);
+    let messages: any[] = [];
+    let contacts: any[] = [];
 
-    // 2. Fetch all messages (including admin replies with this contactId or original user messages)
-    const messages = await prisma.message.findMany({
-      where: {
-        OR: [
-          { senderEmail: channelId },
-          { contactId: { in: contactIds } }
-        ]
-      },
-      include: {
-        user: { select: { name: true } },
-        contact: { select: { name: true } },
-      },
-      orderBy: { createdAt: "asc" },
-    });
+    if (id) {
+      // 1. Fetch by Conversation ID
+      messages = await prisma.message.findMany({
+        where: { conversationId: id },
+        include: {
+          user: { select: { name: true } },
+          contact: { select: { id: true, name: true, email: true } },
+        },
+        orderBy: { createdAt: "asc" },
+      });
 
-    // Keep contact history too, so timeline remains complete
-    const contacts = await prisma.contact.findMany({
-      where: { email: channelId },
-      orderBy: { createdAt: "asc" },
-    });
+      const conversation = await prisma.conversation.findUnique({
+        where: { id },
+        select: { email: true }
+      });
+
+      if (conversation) {
+        contacts = await prisma.contact.findMany({
+          where: { email: conversation.email },
+          orderBy: { createdAt: "asc" },
+        });
+      }
+    } else if (email) {
+      // 2. Legacy/Fallback: Fetch by Email
+      const userContacts = await prisma.contact.findMany({
+        where: { email },
+        select: { id: true }
+      });
+      const contactIds = userContacts.map(c => c.id);
+
+      messages = await prisma.message.findMany({
+        where: {
+          OR: [
+            { senderEmail: email },
+            { contactId: { in: contactIds } }
+          ]
+        },
+        include: {
+          user: { select: { name: true } },
+          contact: { select: { name: true } },
+        },
+        orderBy: { createdAt: "asc" },
+      });
+
+      contacts = await prisma.contact.findMany({
+        where: { email },
+        orderBy: { createdAt: "asc" },
+      });
+    } else {
+      return ApiResponse.error("id or email is required", 400);
+    }
+
+
 
     const normalizedMessages = messages.map((m: (typeof messages)[number]) => ({
       id: m.id,
@@ -75,7 +100,8 @@ export async function GET(request: Request) {
     return ApiResponse.success({
       data: timeline,
     });
-  } catch (error) {
+  } catch (error: any) {
+    console.error("Messages fetch error:", error);
     return ApiResponse.internalError(error);
   }
 }

@@ -53,19 +53,31 @@ model User {
   @@index([roleId], map: "User_roleId_fkey")
 }
 
+model Conversation {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  name      String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  messages  Message[]
+}
+
 model Message {
-  id          String   @id @default(cuid())
-  content     String   @db.Text
-  senderId    String?
-  createdAt   DateTime @default(now())
-  contactId   String?
-  isAdmin     Boolean  @default(false)
-  senderEmail String?
-  contact     Contact? @relation(fields: [contactId], references: [id])
-  user        User?    @relation(fields: [senderId], references: [id])
+  id              String        @id @default(cuid())
+  content         String        @db.Text
+  senderId        String?
+  createdAt       DateTime      @default(now())
+  contactId       String?
+  conversationId  String?
+  isAdmin         Boolean       @default(false)
+  senderEmail     String?
+  contact         Contact?      @relation(fields: [contactId], references: [id])
+  user            User?         @relation(fields: [senderId], references: [id])
+  conversation    Conversation? @relation(fields: [conversationId], references: [id])
 
   @@index([contactId], map: "Message_contactId_fkey")
   @@index([senderId], map: "Message_senderId_fkey")
+  @@index([conversationId], map: "Message_conversationId_fkey")
 }
 
 model VerificationToken {

@@ -16,15 +16,39 @@ export async function POST(request: Request) {
       return ApiResponse.error("Email/ContactId and content are required", 400);
     }
 
-    // Store admin reply as a message linked to the conversation via contactId
+    // 1. Find or create conversation
+    let conversation = await prisma.conversation.findUnique({
+      where: { email }
+    });
+
+    if (!conversation) {
+      conversation = await prisma.conversation.create({
+        data: {
+          email,
+          name: email.split("@")[0], // Fallback name
+        }
+      });
+    }
+
+    // 2. Store admin reply linked to conversation
     const message = await prisma.message.create({
       data: {
         content,
         senderId: (session.user as any).id,
         senderEmail: session.user.email,
         contactId: contactId,
+        conversationId: conversation.id,
         isAdmin: true,
       },
+      include: {
+        user: { select: { name: true } }
+      }
+    });
+    
+    // Update conversation timestamp
+    await prisma.conversation.update({
+      where: { id: conversation.id },
+      data: { updatedAt: new Date() }
     });
 
     const pusherMessage = {
@@ -36,22 +60,15 @@ export async function POST(request: Request) {
       },
       senderRole: "admin",
       createdAt: message.createdAt,
+      conversationId: conversation.id,
     };
 
-    // Trigger on the specific conversation channel
-    const channelName = `conversation-${email.replace(/[^a-zA-Z0-9_\-=@,.;]/g, "")}`;
+    // Trigger on the specific conversation channel using the stable ID
+    const channelName = `conversation-${conversation.id}`;
     await pusherServer.trigger(channelName, "new-message", pusherMessage);
 
-    // Also trigger on the global chat room as a general update
-    await pusherServer.trigger("chat-room", "new-message", {
-       ...pusherMessage,
-       content: `Admin replied to ${email}: ${content}`,
-       senderId: "system",
-       sender: { name: "System" }
-    });
-
     return ApiResponse.success({ data: message });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Reply error:", error);
     return ApiResponse.internalError(error);
   }

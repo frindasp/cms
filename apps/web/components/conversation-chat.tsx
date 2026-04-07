@@ -93,10 +93,11 @@ export default function ConversationChat() {
     }
   };
 
-  const fetchMessages = async (channelId: string) => {
+  const fetchMessages = async (identifier: string) => {
     setLoadingMessages(true);
     try {
-      const res = await fetch(`/api/contacts/messages?channelId=${encodeURIComponent(channelId)}`);
+      // Try fetching by ID first, then fallback to email if necessary
+      const res = await fetch(`/api/contacts/messages?id=${identifier}`);
       if (res.ok) {
         const json = await res.json();
         setMessages(json.data);
@@ -111,9 +112,12 @@ export default function ConversationChat() {
   useEffect(() => {
     if (!selectedThread) return;
 
-    fetchMessages(selectedThread.email);
+    // Use ID if available, otherwise email
+    const identifier = (selectedThread as any).id || selectedThread.email;
+    fetchMessages(identifier);
 
-    const channelName = `conversation-${selectedThread.email.replace(/[^a-zA-Z0-9_\-=@,.;]/g, "")}`;
+    // Use stable ID for Pusher channel
+    const channelName = `conversation-${identifier}`;
     const channel = pusherClient.subscribe(channelName);
 
     channel.bind("new-message", (message: Message) => {
@@ -143,7 +147,8 @@ export default function ConversationChat() {
         body: JSON.stringify({ 
           email: selectedThread.email, 
           content: input,
-          contactId: selectedThread.contactId 
+          contactId: selectedThread.contactId,
+          conversationId: (selectedThread as any).id
         }),
       });
 
