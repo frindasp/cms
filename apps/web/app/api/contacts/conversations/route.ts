@@ -43,16 +43,17 @@ export async function GET() {
       }
     });
 
-    const readStateMap = readStates.reduce<Record<string, Date>>((acc, s) => {
-      acc[s.conversationId] = s.lastReadAt;
+    const stateMap = readStates.reduce<Record<string, typeof readStates[0]>>((acc, s) => {
+      acc[s.conversationId] = s;
       return acc;
     }, {});
 
     const allThreadsPromise = conversations.map(async conv => {
       const lastMsg = conv.messages[0];
       const roleName = lastMsg?.user?.role?.name;
+      const state = stateMap[conv.id];
       
-      const lastRead = readStateMap[conv.id] || new Date(0);
+      const lastRead = state?.lastReadAt || new Date(0);
       const unreadCount = await prisma.message.count({
         where: {
           conversationId: conv.id,
@@ -74,15 +75,30 @@ export async function GET() {
         unreadCount: unreadCount,
         source: "message",
         contactId: lastMsg?.contactId || null,
+        roleId: conv.roleId,
+        userState: {
+          isPinned: state?.isPinned ?? false,
+          isFavorite: state?.isFavorite ?? false,
+          isArchived: state?.isArchived ?? false,
+          isMuted: state?.isMuted ?? false,
+          isRead: state?.isRead ?? true,
+        },
       };
     });
 
     const allThreads = await Promise.all(allThreadsPromise);
 
+    // Sort: pinned first, then by date
+    allThreads.sort((a, b) => {
+      if (a.userState.isPinned && !b.userState.isPinned) return -1;
+      if (!a.userState.isPinned && b.userState.isPinned) return 1;
+      return new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime();
+    });
+
     return ApiResponse.success({
       data: {
         messageThreads: allThreads,
-        contactThreads: [], // For simplicity, merging them for now or handling as before if needed
+        contactThreads: [],
       },
     });
   } catch (error: any) {

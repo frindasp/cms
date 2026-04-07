@@ -22,6 +22,10 @@ model ConversationReadState {
   userId         String
   lastReadAt     DateTime @default(now())
   isRead         Boolean  @default(true)
+  isArchived     Boolean  @default(false)
+  isFavorite     Boolean  @default(false)
+  isMuted        Boolean  @default(false)
+  isPinned       Boolean  @default(false)
 
   @@unique([conversationId, userId])
 }
