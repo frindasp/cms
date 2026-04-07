@@ -80,9 +80,10 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
 
   // Browser Title Notification
   useEffect(() => {
-    const totalUnread = [...messageThreads, ...contactThreads].reduce((sum, t) => sum + (t.unreadCount || 0), 0);
-    if (totalUnread > 0) {
-      document.title = `(${totalUnread}) Inbox - Admin Dashboard`;
+    // document.title should be conversation count
+    const unreadConvos = [...messageThreads, ...contactThreads].filter(t => t.unreadCount > 0).length;
+    if (unreadConvos > 0) {
+      document.title = `(${unreadConvos}) Inbox - Admin Dashboard`;
     } else {
       document.title = `Inbox - Admin Dashboard`;
     }
@@ -93,13 +94,50 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
     fetchUsers();
 
     const notificationChannel = pusherClient.subscribe("admin-notifications");
+    
+    const handleUpdate = (data: any) => {
+      const updateList = (prev: Thread[]) => {
+        const idx = prev.findIndex(t => t.id === data.conversationId);
+        if (idx === -1) {
+          // If totally new, maybe re-fetch or ignore for now (fetchThreads handles new ones)
+          fetchThreads();
+          return prev;
+        }
+        const updated = [...prev];
+        const thread = updated[idx];
+        if (!thread) return prev;
+        
+        // Only increment unread if it's from user AND not the selected thread
+        const isExternal = data.lastMessage.senderId !== session?.user?.id;
+        const isCurrentlyViewed = selectedThread?.id === data.conversationId;
+        
+        const newThread: Thread = {
+          ...thread,
+          lastMessage: data.lastMessage.content,
+          lastMessageAt: data.lastMessage.createdAt || new Date().toISOString(),
+          unreadCount: (isExternal && !isCurrentlyViewed) ? (thread.unreadCount + 1) : thread.unreadCount,
+          messageCount: thread.messageCount + 1,
+        };
+        
+        updated[idx] = newThread;
+        
+        // Move to top
+        const [movedItem] = updated.splice(idx, 1);
+        if (movedItem) updated.unshift(movedItem);
+        return updated;
+      };
+
+      setMessageThreads(prev => updateList(prev));
+      setContactThreads(prev => updateList(prev));
+    };
+
+    notificationChannel.bind("conversation-updated", handleUpdate);
     notificationChannel.bind("new-contact", () => fetchThreads());
-    notificationChannel.bind("new-message", () => fetchThreads());
 
     return () => {
       pusherClient.unsubscribe("admin-notifications");
     };
-  }, []);
+  }, [selectedThread?.id, session?.user?.id]);
 
   const markAsRead = async (id: string) => {
     try {
@@ -374,17 +412,24 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
                 <MessageSquare className="h-5 w-5 text-primary" />
                 <CardTitle className="text-lg font-bold">Inbox</CardTitle>
             </div>
-            <Button
-                variant="ghost"
-                size="icon"
-                className={cn("h-8 w-8 rounded-full", activeTab === "new-chat" && "bg-primary text-primary-foreground")}
-                onClick={() => {
-                    setActiveTab("new-chat");
-                    setSelectedThread(null);
-                }}
-            >
-                <UserPlus className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+               {messageThreads.reduce((s,t) => s + t.unreadCount, 0) > 0 && (
+                 <span className="bg-primary text-primary-foreground text-[10px] font-black px-2 py-0.5 rounded-full animate-bounce">
+                    {messageThreads.reduce((s,t) => s + t.unreadCount, 0)} NEW
+                 </span>
+               )}
+               <Button
+                  variant="ghost"
+                  size="icon"
+                  className={cn("h-8 w-8 rounded-full", activeTab === "new-chat" && "bg-primary text-primary-foreground")}
+                  onClick={() => {
+                      setActiveTab("new-chat");
+                      setSelectedThread(null);
+                  }}
+               >
+                  <UserPlus className="h-4 w-4" />
+               </Button>
+            </div>
           </div>
           <div className="relative mb-3">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-50" />
@@ -394,7 +439,14 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
               if (value !== "new-chat") setActiveTab(value as any);
           }}>
             <TabsList className="w-full grid grid-cols-2 rounded-xl bg-background/50 p-1">
-              <TabsTrigger value="message" className="rounded-lg text-xs">Direct</TabsTrigger>
+              <TabsTrigger value="message" className="rounded-lg text-xs relative">
+                 Direct
+                 {messageThreads.reduce((s,t) => s + t.unreadCount, 0) > 0 && (
+                   <span className="ml-1.5 h-4 w-4 flex items-center justify-center rounded-full bg-primary text-[8px] font-black text-primary-foreground">
+                      {messageThreads.reduce((s,t) => s + (t.unreadCount || 0), 0)}
+                   </span>
+                 )}
+              </TabsTrigger>
               <TabsTrigger value="contact" className="rounded-lg text-xs">Public</TabsTrigger>
             </TabsList>
           </Tabs>
