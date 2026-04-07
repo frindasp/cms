@@ -43,11 +43,6 @@ const items = [
     icon: LayoutDashboard,
   },
   {
-    title: "Real-time Live Chat",
-    url: APP_ROUTES.ADMIN.LIVE_CHAT,
-    icon: Send,
-  },
-  {
     title: "Contacts",
     url: APP_ROUTES.ADMIN.CONTACTS,
     icon: Contact,
@@ -66,11 +61,6 @@ const items = [
     title: "Roles",
     url: APP_ROUTES.ADMIN.ROLES,
     icon: Shield,
-  },
-  {
-    title: "Messages",
-    url: APP_ROUTES.ADMIN.MESSAGES,
-    icon: MessageSquare,
   },
   {
     title: "Verification Tokens",
