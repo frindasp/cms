@@ -37,3 +37,32 @@ export async function PATCH(
     return ApiResponse.internalError(error);
   }
 }
+
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth();
+  if (!session?.user || (session.user as any).role !== "ADMIN") {
+    return ApiResponse.unauthorized();
+  }
+
+  try {
+    const { id } = await params;
+
+    // Mark all non-admin messages in this conversation as read
+    await prisma.message.updateMany({
+      where: {
+        conversationId: id,
+        isAdmin: false,
+        isRead: false,
+      },
+      data: { isRead: true },
+    });
+
+    return ApiResponse.success({ success: true });
+  } catch (error: any) {
+    console.error("Mark as read error:", error);
+    return ApiResponse.internalError(error);
+  }
+}

@@ -34,6 +34,7 @@ type Thread = {
   lastMessage: string;
   lastMessageAt: string;
   messageCount: number;
+  unreadCount: number;
   source: ThreadSource;
   contactId: string | null;
   roleId: string | null;
@@ -43,6 +44,7 @@ type UserDetail = {
   id: string;
   name: string | null;
   email: string;
+  roleId: string;
   role: { name: string };
 };
 
@@ -71,6 +73,16 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
   const [newMsgContent, setNewMsgContent] = useState("");
   const [startingChat, setStartingChat] = useState(false);
 
+  // Browser Title Notification
+  useEffect(() => {
+    const totalUnread = [...messageThreads, ...contactThreads].reduce((sum, t) => sum + (t.unreadCount || 0), 0);
+    if (totalUnread > 0) {
+      document.title = `(${totalUnread}) Inbox - Admin Dashboard`;
+    } else {
+      document.title = `Inbox - Admin Dashboard`;
+    }
+  }, [messageThreads, contactThreads]);
+
   useEffect(() => {
     fetchThreads();
     fetchUsers();
@@ -83,6 +95,17 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
       pusherClient.unsubscribe("admin-notifications");
     };
   }, []);
+
+  const markAsRead = async (id: string) => {
+    try {
+      await fetch(`/api/contacts/conversations/${id}`, { method: "POST" });
+      // Update local state immediately to subtract from unread
+      setMessageThreads(prev => prev.map(t => t.id === id ? { ...t, unreadCount: 0 } : t));
+      setContactThreads(prev => prev.map(t => t.id === id ? { ...t, unreadCount: 0 } : t));
+    } catch (err) {
+      console.error("Mark as read error:", err);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -108,7 +131,6 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
         setMessageThreads(nextMessageThreads);
         setContactThreads(nextContactThreads);
         
-        // If we are in "new-chat" mode, don't auto-switch unless it's the first load
         if (activeTab !== "new-chat") {
             setActiveTab((prev) => {
                 if (prev === "message" && nextMessageThreads.length === 0 && nextContactThreads.length > 0) return "contact";
@@ -154,18 +176,21 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
 
     const identifier = selectedThread.id;
     fetchMessages(identifier);
+    markAsRead(identifier); // Mark as read when opening
 
     const channelName = `conversation-${identifier}`;
     const channel = pusherClient.subscribe(channelName);
 
     channel.bind("new-message", (message: Message) => {
       setMessages((prev) => [...prev, message]);
+      // If we are currently looking at this chat, mark it as read immediately
+      markAsRead(identifier);
     });
 
     return () => {
       pusherClient.unsubscribe(channelName);
     };
-  }, [selectedThread, activeTab]);
+  }, [selectedThread?.id, activeTab]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -208,7 +233,7 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
         body: JSON.stringify({ 
           email: selectedUserEmail, 
           content: newMsgContent,
-          roleId: user?.role?.name === "ADMIN" ? "ADMIN_ID_OR_ROLE" : "USER_ID_OR_ROLE", // Simplified for demo
+          roleId: user?.roleId || null,
         }),
       });
 
@@ -217,7 +242,6 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
         toast.success("Conversation started!");
         setNewMsgContent("");
         setSelectedUserEmail("");
-        // Switch to message tab and select the new thread
         const newThread = json.data.conversation;
         await fetchThreads();
         setActiveTab("message");
@@ -276,7 +300,7 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
           setNewTitle(thread.title || "");
         }}
         className={cn(
-          "w-full text-left p-4 flex gap-3 transition-all hover:bg-primary/5 border-b border-primary/5",
+          "w-full text-left p-4 flex gap-3 transition-all hover:bg-primary/5 border-b border-primary/5 relative",
           selectedThread?.id === thread.id && "bg-primary/10 border-l-4 border-l-primary"
         )}
       >
@@ -285,17 +309,28 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
         </Avatar>
         <div className="min-w-0 flex-1">
           <div className="flex justify-between items-start">
-            <p className="text-sm font-semibold truncate text-foreground">{thread.title || thread.name || "Belum diberi judul"}</p>
+            <p className={cn("text-sm truncate text-foreground", thread.unreadCount > 0 ? "font-black" : "font-semibold")}>
+                {thread.title || thread.name || "Belum diberi judul"}
+            </p>
             <span className="text-[10px] text-muted-foreground whitespace-nowrap ml-2 opacity-70">
               {new Date(thread.lastMessageAt).toLocaleDateString([], { month: "short", day: "numeric" })}
             </span>
           </div>
-          <p className="text-[11px] text-muted-foreground truncate opacity-60 mt-0.5">{thread.lastMessage}</p>
-          <div className="flex items-center gap-2 mt-2">
-            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-bold">
-              {thread.messageCount} msgs
-            </span>
-            <span className="text-[9px] text-muted-foreground truncate">with {thread.email}</span>
+          <p className={cn("text-[11px] truncate mt-0.5", thread.unreadCount > 0 ? "text-primary font-bold" : "text-muted-foreground opacity-60")}>
+              {thread.lastMessage}
+          </p>
+          <div className="flex items-center justify-between mt-2">
+            <div className="flex items-center gap-2">
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-bold">
+                {thread.messageCount} msgs
+                </span>
+                <span className="text-[9px] text-muted-foreground truncate max-w-[100px]">with {thread.email}</span>
+            </div>
+            {thread.unreadCount > 0 && (
+                <span className="h-4 min-w-4 px-1 flex items-center justify-center rounded-full bg-primary text-[8px] font-black text-primary-foreground animate-pulse shadow-sm shadow-primary/40">
+                    {thread.unreadCount}
+                </span>
+            )}
           </div>
         </div>
       </button>

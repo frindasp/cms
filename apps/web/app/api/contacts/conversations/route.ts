@@ -31,13 +31,16 @@ export async function GET() {
           },
         },
         _count: {
-          select: { messages: true }
+          select: { 
+            messages: {
+              where: { isAdmin: false, isRead: false }
+            }
+          }
         }
       },
       orderBy: { updatedAt: "desc" },
     });
 
-    // Match the existing UI format
     const allThreads: any[] = conversations.map(conv => {
       const lastMsg = conv.messages[0];
       const roleName = lastMsg?.user?.role?.name;
@@ -48,7 +51,8 @@ export async function GET() {
         name: `${conv.name || conv.email}${roleName ? ` (${roleName})` : ""}`,
         lastMessage: lastMsg?.content || "No messages",
         lastMessageAt: lastMsg?.createdAt || conv.createdAt,
-        messageCount: conv._count.messages,
+        messageCount: conv.messages.length, // Total messages count if needed separately
+        unreadCount: (conv._count as any).messages,
         source: "message",
         contactId: lastMsg?.contactId || null,
       };
