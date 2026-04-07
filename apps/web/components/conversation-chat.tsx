@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@workspace
 import { Input } from "@workspace/ui/components/input";
 import { Button } from "@workspace/ui/components/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@workspace/ui/components/avatar";
-import { MessageSquare, Send, Loader2, Search, Edit2, Check, X, UserPlus, UserCircle } from "lucide-react";
+import { MessageSquare, Send, Loader2, Search, Edit2, Check, X, UserPlus, UserCircle, ChevronLeft } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@workspace/ui/components/select";
 import { cn } from "@workspace/ui/lib/utils";
@@ -404,8 +404,11 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
   if (status === "loading") return <div className="flex justify-center p-10"><Loader2 className="animate-spin" /></div>;
 
   return (
-    <div className="flex flex-col lg:flex-row h-[750px] w-full gap-4 max-w-7xl mx-auto p-2">
-      <Card className="w-full lg:w-80 flex flex-col border-primary/10 bg-card/40 backdrop-blur-2xl shadow-2xl rounded-3xl overflow-hidden">
+    <div className="flex flex-col lg:flex-row h-[calc(100vh-250px)] lg:h-[750px] w-full gap-4 max-w-7xl mx-auto p-2">
+      <Card className={cn(
+        "w-full lg:w-80 flex flex-col border-primary/10 bg-card/40 backdrop-blur-2xl shadow-2xl rounded-3xl overflow-hidden shrink-0",
+        (selectedThread || activeTab === "new-chat") && "hidden lg:flex"
+      )}>
         <CardHeader className="p-4 border-b border-primary/5 bg-primary/5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -468,9 +471,23 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
         </CardContent>
       </Card>
 
-      <Card className="flex-1 flex flex-col border-primary/10 bg-card/40 backdrop-blur-2xl shadow-2xl rounded-3xl overflow-hidden relative">
+      <Card className={cn(
+        "flex-1 flex flex-col border-primary/10 bg-card/40 backdrop-blur-2xl shadow-2xl rounded-3xl overflow-hidden relative",
+        (!selectedThread && activeTab !== "new-chat") && "hidden lg:flex"
+      )}>
         {activeTab === "new-chat" ? (
-             <div className="flex-1 flex flex-col p-8 md:p-12 max-w-2xl mx-auto w-full">
+             <div className="flex-1 flex flex-col p-4 md:p-12 max-w-2xl mx-auto w-full">
+                <div className="flex items-center gap-2 mb-4 lg:hidden">
+                    <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 -ml-1" 
+                        onClick={() => setActiveTab("message")}
+                    >
+                        <ChevronLeft className="h-5 w-5" />
+                    </Button>
+                    <span className="font-bold">New Chat</span>
+                </div>
                 <div className="space-y-6 animate-in slide-in-from-bottom-5 duration-700">
                     <div className="space-y-2">
                         <h2 className="text-2xl font-bold tracking-tight">Initiate Conversation</h2>
@@ -520,9 +537,19 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
              </div>
         ) : selectedThread ? (
           <>
-            <CardHeader className="p-4 border-b border-primary/5 bg-background/60 backdrop-blur-md flex flex-row items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Avatar className="h-10 w-10 border-2 border-primary/10">
+            <CardHeader className="p-3 md:p-4 border-b border-primary/5 bg-background/60 backdrop-blur-md flex flex-row items-center justify-between">
+              <div className="flex items-center gap-2 md:gap-3">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="lg:hidden h-8 w-8 -ml-1 shrink-0" 
+                  onClick={() => {
+                    setSelectedThread(null);
+                  }}
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
+                <Avatar className="h-8 w-8 md:h-10 md:w-10 border-2 border-primary/10">
                   <AvatarFallback className="bg-primary/20 text-primary font-bold">{selectedThread.name?.[0] || "U"}</AvatarFallback>
                 </Avatar>
                 <div className="w-full max-w-[200px] md:max-w-[400px]">
