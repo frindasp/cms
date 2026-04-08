@@ -1,7 +1,6 @@
 "use client";
 
 import ChatRoom from "@/components/chat-room";
-import ContactForm from "@/components/contact-form";
 import ConversationChat from "@/components/conversation-chat";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workspace/ui/components/tabs";
 

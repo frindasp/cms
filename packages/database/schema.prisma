@@ -7,14 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Contact {
-  id        String    @id @default(cuid())
-  name      String
-  email     String
-  message   String
-  createdAt DateTime  @default(now())
-  messages  Message[]
-}
+
 
 model ConversationReadState {
   id             String   @id @default(cuid())
@@ -26,6 +19,9 @@ model ConversationReadState {
   isFavorite     Boolean  @default(false)
   isMuted        Boolean  @default(false)
   isPinned       Boolean  @default(false)
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  user           User         @relation(fields: [userId], references: [id])
 
   @@unique([conversationId, userId])
 }
@@ -62,6 +58,7 @@ model User {
   messages            Message[]
   TotpAuthenticator   TotpAuthenticator[]
   role                Role                  @relation(fields: [roleId], references: [id])
+  readStates          ConversationReadState[]
 
   @@unique([email, roleId])
   @@index([roleId], map: "User_roleId_fkey")
@@ -78,6 +75,7 @@ model Conversation {
   adminAlias String?
   userAlias  String?
   messages   Message[]
+  readStates ConversationReadState[]
 }
 
 model Message {
@@ -85,16 +83,16 @@ model Message {
   content        String        @db.Text
   senderId       String?
   createdAt      DateTime      @default(now())
-  contactId      String?
+
   isAdmin        Boolean       @default(false)
   senderEmail    String?
   conversationId String?
   isRead         Boolean       @default(false)
-  contact        Contact?      @relation(fields: [contactId], references: [id])
+
   conversation   Conversation? @relation(fields: [conversationId], references: [id])
   user           User?         @relation(fields: [senderId], references: [id])
 
-  @@index([contactId], map: "Message_contactId_fkey")
+
   @@index([senderId], map: "Message_senderId_fkey")
   @@index([conversationId], map: "Message_conversationId_fkey")
 }

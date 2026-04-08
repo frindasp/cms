@@ -52,11 +52,6 @@ const items = [
     icon: MessageSquare,
   },
   {
-    title: "Contacts",
-    url: APP_ROUTES.ADMIN.CONTACTS,
-    icon: Contact,
-  },
-  {
     title: "Resend",
     url: APP_ROUTES.ADMIN.RESEND.EMAILS,
     icon: Mail,

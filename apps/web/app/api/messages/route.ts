@@ -21,7 +21,7 @@ export async function GET(request: Request) {
         take: limit,
         include: {
           user: { select: { name: true, email: true } },
-          contact: { select: { name: true, email: true } },
+          conversation: { select: { title: true } }
         },
         orderBy: { createdAt: "desc" },
       }),
@@ -31,9 +31,9 @@ export async function GET(request: Request) {
     const normalizedMessages = messages.map((m: (typeof messages)[number]) => ({
       ...m,
       sender: {
-        name: m.isAdmin 
-          ? `Admin - ${m.user?.name || "Support"}` 
-          : (m.contact?.name || m.user?.name || m.senderEmail),
+         name: m.isAdmin 
+           ? `Admin - ${m.user?.name || "Support"}` 
+           : (m.user?.name || m.senderEmail),
       },
     }));
 

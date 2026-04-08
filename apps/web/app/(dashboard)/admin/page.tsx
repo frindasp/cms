@@ -8,8 +8,8 @@ import { Resend } from "resend";
 export default async function AdminPage() {
   const resend = new Resend(process.env.RESEND_API_KEY || "re_dummy");
   
-  const [contactsCount, emailsCount, usersCount, tokensCount, webhooksRes] = await Promise.all([
-    prisma.contact.count(),
+  const [conversationsCount, emailsCount, usersCount, tokensCount, webhooksRes] = await Promise.all([
+    prisma.conversation.count(),
     prisma.webhookEmail.count(),
     prisma.user.count(),
     prisma.verificationToken.count(),
@@ -19,7 +19,7 @@ export default async function AdminPage() {
   const stats = DASHBOARD_STATS.map((stat) => ({
     ...stat,
     value: 
-      stat.id === "contacts" ? contactsCount :
+      stat.id === "contacts" ? conversationsCount :
       stat.id === "emails" ? emailsCount :
       stat.id === "webhooks" ? ((webhooksRes.data as any)?.data?.length || 0) :
       stat.id === "tokens" ? tokensCount :

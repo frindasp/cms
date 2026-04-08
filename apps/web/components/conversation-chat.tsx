@@ -35,7 +35,7 @@ type Message = {
   };
 };
 
-type ThreadSource = "message" | "contact" | "new-chat";
+type ThreadSource = "message" | "new-chat";
 
 type UserState = {
   isPinned: boolean;
@@ -55,7 +55,6 @@ type Thread = {
   messageCount: number;
   unreadCount: number;
   source: ThreadSource;
-  contactId: string | null;
   roleId: string | null;
   userAlias?: string | null;
   adminAlias?: string | null;
@@ -77,9 +76,8 @@ interface ConversationChatProps {
 export default function ConversationChat({ defaultTab = "message" }: ConversationChatProps) {
   const { data: session, status } = useSession();
   const [messageThreads, setMessageThreads] = useState<Thread[]>([]);
-  const [contactThreads, setContactThreads] = useState<Thread[]>([]);
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
-  const [activeTab, setActiveTab] = useState<ThreadSource>(defaultTab === "new-chat" ? "new-chat" : "contact");
+  const [activeTab, setActiveTab] = useState<ThreadSource>(defaultTab === "new-chat" ? "new-chat" : "message");
   const [filterTab, setFilterTab] = useState("all");
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -102,13 +100,13 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
 
   // Browser Title Notification
   useEffect(() => {
-    const unreadConvos = [...messageThreads, ...contactThreads].filter(t => t.unreadCount > 0).length;
+    const unreadConvos = messageThreads.filter(t => t.unreadCount > 0).length;
     if (unreadConvos > 0) {
       document.title = `(${unreadConvos}) Inbox - Admin Dashboard`;
     } else {
       document.title = `Inbox - Admin Dashboard`;
     }
-  }, [messageThreads, contactThreads]);
+  }, [messageThreads]);
 
   useEffect(() => {
     fetchThreads();
@@ -145,11 +143,9 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
       };
 
       setMessageThreads(prev => updateList(prev));
-      setContactThreads(prev => updateList(prev));
     };
 
     notificationChannel.bind("conversation-updated", handleUpdate);
-    notificationChannel.bind("new-contact", () => fetchThreads());
 
     return () => {
       pusherClient.unsubscribe("admin-notifications");
@@ -158,9 +154,8 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
 
   const markAsRead = async (id: string) => {
     try {
-      await fetch(`/api/contacts/conversations/${id}`, { method: "POST" });
+      await fetch(`/api/chat/conversations/${id}`, { method: "POST" });
       setMessageThreads(prev => prev.map(t => t.id === id ? { ...t, unreadCount: 0 } : t));
-      setContactThreads(prev => prev.map(t => t.id === id ? { ...t, unreadCount: 0 } : t));
     } catch (err) {
       console.error("Mark as read error:", err);
     }
@@ -180,29 +175,17 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
 
   const fetchThreads = async () => {
     try {
-      const res = await fetch("/api/contacts/conversations");
+      const res = await fetch("/api/chat/conversations");
       if (res.ok) {
         const json = await res.json();
         const grouped = json.data ?? {};
         const nextMessageThreads: Thread[] = grouped.messageThreads ?? [];
-        const nextContactThreads: Thread[] = grouped.contactThreads ?? [];
 
         setMessageThreads(nextMessageThreads);
-        setContactThreads(nextContactThreads);
-        
-        if (activeTab !== "new-chat") {
-            setActiveTab((prev) => {
-                if (prev === "message" && nextMessageThreads.length === 0 && nextContactThreads.length > 0) return "contact";
-                if (prev === "contact" && nextContactThreads.length === 0 && nextMessageThreads.length > 0) return "message";
-                return prev;
-            });
-        }
 
         setSelectedThread((prev) => {
           if (prev) {
-            const stillExists =
-              nextMessageThreads.find((thread) => thread.id === prev.id) ??
-              nextContactThreads.find((thread) => thread.id === prev.id);
+            const stillExists = nextMessageThreads.find((thread) => thread.id === prev.id);
             if (stillExists) return { ...prev, ...stillExists };
           }
           return null;
@@ -218,7 +201,7 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
   const fetchMessages = async (identifier: string) => {
     setLoadingMessages(true);
     try {
-      const res = await fetch(`/api/contacts/messages?id=${identifier}`);
+      const res = await fetch(`/api/chat/messages?id=${identifier}`);
       if (res.ok) {
         const json = await res.json();
         setMessages(json.data);
@@ -260,7 +243,7 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
   const toggleState = async (id: string, stateKey: keyof UserState, currentValue: boolean) => {
     const newValue = !currentValue;
     try {
-      const res = await fetch(`/api/contacts/conversations/${id}`, {
+      const res = await fetch(`/api/chat/conversations/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ [stateKey]: newValue }),
@@ -273,7 +256,6 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
               : t
           );
         setMessageThreads(updater);
-        setContactThreads(updater);
         if (selectedThread?.id === id) {
           setSelectedThread(prev => prev ? { ...prev, userState: { ...(prev.userState || {}), [stateKey]: newValue } as UserState } : prev);
         }
@@ -285,7 +267,7 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
 
   const handleClear = async (id: string) => {
     if (!confirm("Hapus semua pesan di percakapan ini?")) return;
-    const res = await fetch(`/api/contacts/conversations/${id}?clear=true`, { method: "DELETE" });
+    const res = await fetch(`/api/chat/conversations/${id}?clear=true`, { method: "DELETE" });
     if (res.ok) {
       if (selectedThread?.id === id) setMessages([]);
       toast.success("Pesan berhasil dihapus");
@@ -295,11 +277,10 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
 
   const handleDelete = async (id: string) => {
     if (!confirm("Hapus seluruh percakapan ini? Tindakan tidak dapat dibatalkan.")) return;
-    const res = await fetch(`/api/contacts/conversations/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/chat/conversations/${id}`, { method: "DELETE" });
     if (res.ok) {
       if (selectedThread?.id === id) setSelectedThread(null);
       setMessageThreads(prev => prev.filter(t => t.id !== id));
-      setContactThreads(prev => prev.filter(t => t.id !== id));
       toast.success("Percakapan berhasil dihapus");
     }
   };
@@ -308,7 +289,7 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
     if (!selectedThread) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/contacts/conversations/${selectedThread.id}`, {
+      const res = await fetch(`/api/chat/conversations/${selectedThread.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userAlias: userNickname, adminAlias: adminNickname }),
@@ -329,7 +310,7 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
     if (!selectedThread || !newTitle.trim()) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/contacts/conversations/${selectedThread.id}`, {
+      const res = await fetch(`/api/chat/conversations/${selectedThread.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: newTitle }),
@@ -354,7 +335,7 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
     const user = users.find(u => u.email === selectedUserEmail);
     
     try {
-      const res = await fetch("/api/contacts/conversations", {
+      const res = await fetch("/api/chat/conversations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -387,13 +368,12 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
 
     setLoading(true);
     try {
-      const res = await fetch("/api/contacts/reply", {
+      const res = await fetch("/api/chat/reply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           email: selectedThread.email, 
           content: input,
-          contactId: selectedThread.contactId,
           conversationId: selectedThread.id
         }),
       });
@@ -644,7 +624,6 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
         </CardHeader>
         <CardContent className="p-0 flex-1 overflow-y-auto">
           {activeTab === "message" && renderThreads(messageThreads)}
-          {activeTab === "contact" && renderThreads(contactThreads)}
           {activeTab === "new-chat" && (
               <div className="p-4 text-center space-y-4 animate-in fade-in slide-in-from-top-2">
                   <div className="h-20 w-20 rounded-full bg-primary/10 border-2 border-dashed border-primary/20 flex items-center justify-center mx-auto">
