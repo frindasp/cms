@@ -22,6 +22,8 @@ import {
   Trash2,
   ExternalLink,
   Briefcase,
+  Plus,
+  Pencil,
 } from "lucide-react"
 import { Separator } from "@workspace/ui/components/separator"
 
@@ -77,10 +79,16 @@ export default function PortfoliosAdminPage() {
             Portfolio
           </h1>
           <p className="text-muted-foreground mt-1">
-            Semua item portfolio yang ditampilkan di halaman portfolio.{" "}
+            Semua item portfolio yang ditampilkan di halaman portfolio. {" "}
             <Badge variant="secondary" className="text-xs">{portfolios.length} item</Badge>
           </p>
         </div>
+        <Button asChild>
+          <Link href="/admin/portfolios/new">
+            <Plus className="w-4 h-4 mr-1" />
+            Tambah Portfolio
+          </Link>
+        </Button>
       </div>
 
       <Separator />
@@ -90,11 +98,7 @@ export default function PortfoliosAdminPage() {
           <FolderOpen className="w-10 h-10 mx-auto mb-3 opacity-40" />
           <p className="text-sm">Belum ada portfolio item.</p>
           <p className="text-xs mt-1">
-            Tambahkan dari halaman detail{" "}
-            <Link href="/admin/experiences" className="text-primary underline">
-              Experience
-            </Link>
-            .
+            Klik tombol <strong>Tambah Portfolio</strong> untuk membuat item baru.
           </p>
         </div>
       ) : (
@@ -135,6 +139,11 @@ export default function PortfoliosAdminPage() {
                   </div>
 
                   <div className="flex items-center gap-1 shrink-0">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                      <Link href={`/admin/portfolios/${item.id}/edit`}>
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Link>
+                    </Button>
                     <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
                       <Link href={`/admin/portfolios/${item.id}`}>
                         <ExternalLink className="w-3.5 h-3.5" />
