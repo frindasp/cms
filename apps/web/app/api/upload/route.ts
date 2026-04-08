@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import ImageKit from "imagekit";
+import ImageKit from "@imagekit/nodejs";
 
 const imagekit = new ImageKit({
-  publicKey: process.env.IMAGEKIT_PUBLIC_KEY!,
   privateKey: process.env.IMAGEKIT_PRIVATE_KEY!,
-  urlEndpoint: process.env.IMAGEKIT_URL!,
 });
 
 // GET — return auth params for client-side upload
@@ -13,8 +11,12 @@ export async function GET() {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const authParams = imagekit.getAuthenticationParameters();
-  return NextResponse.json(authParams);
+  const authParams = imagekit.helper.getAuthenticationParameters();
+  return NextResponse.json({
+    ...authParams,
+    publicKey: process.env.IMAGEKIT_PUBLIC_KEY,
+    urlEndpoint: process.env.IMAGEKIT_URL,
+  });
 }
 
 // POST — server-side upload (base64)
@@ -30,7 +32,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const result = await imagekit.upload({
+    const result = await imagekit.files.upload({
       file,
       fileName,
       folder,
