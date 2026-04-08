@@ -12,7 +12,10 @@ export async function GET(
     include: {
       skills: { orderBy: { name: "asc" } },
       images: { orderBy: { order: "asc" } },
-      portfolios: { orderBy: { order: "asc" } },
+      portfolios: { 
+        orderBy: { order: "asc" },
+        include: { images: { orderBy: { order: "asc" } }, tags: true }
+      },
     },
   })
   if (!experience) return NextResponse.json({ error: "Not found" }, { status: 404 })
@@ -75,8 +78,11 @@ export async function DELETE(
     try {
       const { default: ImageKit } = await import("@imagekit/nodejs")
       const ik = new ImageKit({ privateKey: process.env.IMAGEKIT_PRIVATE_KEY! })
+      
+      const toDelete = experience.images.filter(img => img.source === "imagekit" && img.fileId)
+      
       await Promise.allSettled(
-        experience.images.map((img) => ik.files.delete(img.fileId))
+        toDelete.map((img) => ik.files.delete(img.fileId!))
       )
     } catch {
       // Non-fatal

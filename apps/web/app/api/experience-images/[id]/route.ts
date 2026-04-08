@@ -8,7 +8,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth()
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (!session)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const { id } = await params
 
@@ -16,12 +17,14 @@ export async function DELETE(
   if (!image) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
   // Best-effort: delete from ImageKit
-  try {
-    const { default: ImageKit } = await import("@imagekit/nodejs")
-    const ik = new ImageKit({ privateKey: process.env.IMAGEKIT_PRIVATE_KEY! })
-    await ik.files.delete(image.fileId)
-  } catch {
-    // Non-fatal
+  if (image.source === "imagekit" && image.fileId) {
+    try {
+      const { default: ImageKit } = await import("@imagekit/nodejs")
+      const ik = new ImageKit({ privateKey: process.env.IMAGEKIT_PRIVATE_KEY! })
+      await ik.files.delete(image.fileId)
+    } catch {
+      // Non-fatal
+    }
   }
 
   await prisma.experienceImage.delete({ where: { id } })
@@ -34,7 +37,8 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth()
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (!session)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const { id } = await params
   const body = await req.json()

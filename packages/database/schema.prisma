@@ -193,30 +193,56 @@ model Experience {
 }
 
 model ExperienceImage {
-  id           String     @id @default(cuid())
-  url          String
-  fileId       String
-  caption      String?
-  order        Int        @default(0)
-  experienceId String
-  experience   Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
-  createdAt    DateTime   @default(now())
+  id              String           @id @default(cuid())
+  url             String
+  fileId          String?          // Nullable for URL source
+  source          String           @default("imagekit") // "imagekit" or "url"
+  isLogo          Boolean          @default(false)
+  caption         String?
+  order           Int              @default(0)
+  experienceId    String
+  experience      Experience       @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  portfolioImages PortfolioImage[]
+  createdAt       DateTime         @default(now())
 
   @@index([experienceId])
 }
 
+model Tag {
+  id         String      @id @default(cuid())
+  name       String      @unique
+  portfolios Portfolio[]
+  createdAt  DateTime    @default(now())
+}
+
+model PortfolioImage {
+  id                String           @id @default(cuid())
+  url               String
+  fileId            String?
+  source            String           @default("imagekit") // "imagekit" or "url"
+  isLogo            Boolean          @default(false)
+  order             Int              @default(0)
+  portfolioId       String
+  portfolio         Portfolio        @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  experienceImageId String?
+  experienceImage   ExperienceImage? @relation(fields: [experienceImageId], references: [id], onDelete: SetNull)
+  createdAt         DateTime         @default(now())
+
+  @@index([portfolioId])
+}
+
 model Portfolio {
-  id           String     @id @default(cuid())
+  id           String           @id @default(cuid())
   title        String
-  description  String?    @db.Text
-  images       Json       @default("[]")
-  tags         Json       @default("[]")
+  description  String?          @db.Text
+  images       PortfolioImage[]
+  tags         Tag[]
   experienceId String?
-  experience   Experience? @relation(fields: [experienceId], references: [id], onDelete: SetNull)
-  order        Int        @default(0)
-  isPublished  Boolean    @default(true)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  experience   Experience?      @relation(fields: [experienceId], references: [id], onDelete: SetNull)
+  order        Int              @default(0)
+  isPublished  Boolean          @default(true)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
 
   @@index([experienceId])
 }

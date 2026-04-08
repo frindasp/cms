@@ -11,6 +11,8 @@ export async function GET(
     where: { id },
     include: {
       experience: { select: { id: true, company: true, role: true } },
+      images: { orderBy: { order: "asc" } },
+      tags: true,
     },
   })
   if (!portfolio) return NextResponse.json({ error: "Not found" }, { status: 404 })
@@ -25,13 +27,28 @@ export async function PUT(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const { id } = await params
-  const body = await req.json()
+  const { title, description, tags, experienceId, order, isPublished } = await req.json()
 
   const portfolio = await prisma.portfolio.update({
     where: { id },
-    data: body,
+    data: {
+      title,
+      description,
+      experienceId,
+      order,
+      isPublished,
+      tags: tags ? {
+        set: [], // Clear existing
+        connectOrCreate: tags.map((tag: string) => ({
+          where: { name: tag },
+          create: { name: tag },
+        })),
+      } : undefined,
+    },
     include: {
       experience: { select: { id: true, company: true, role: true } },
+      images: true,
+      tags: true,
     },
   })
   return NextResponse.json(portfolio)

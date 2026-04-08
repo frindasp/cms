@@ -1,17 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import ImageKit from "@imagekit/nodejs"
-
-/**
- * POST /api/experiences/[id]/images
- * Upload to ImageKit or save direct URL to ExperienceImage table.
- *
- * PATCH /api/experiences/[id]/images
- * Update image properties like isLogo.
- *
- * DELETE /api/experiences/[id]/images
- * Delete an ExperienceImage by its id and remove from ImageKit if source is imagekit.
- */
+import { prisma } from "@workspace/database"
 
 function getIK() {
   return new ImageKit({ privateKey: process.env.IMAGEKIT_PRIVATE_KEY! })
@@ -24,22 +14,36 @@ export async function POST(
   const session = await auth()
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { id: experienceId } = await params
-  const { file, fileName, url, source = "imagekit", caption, isLogo = false } = await req.json()
-
-  // Dynamic import
-  const { prisma } = await import("@workspace/database")
+  const { id: portfolioId } = await params
+  const { 
+    file, 
+    fileName, 
+    url, 
+    source = "imagekit", 
+    isLogo = false,
+    experienceImageId 
+  } = await req.json()
 
   try {
     let finalUrl = url
     let fileId = null
+    let finalSource = source
 
-    if (source === "imagekit" && file) {
+    if (experienceImageId) {
+      const expImg = await prisma.experienceImage.findUnique({
+        where: { id: experienceImageId }
+      })
+      if (expImg) {
+        finalUrl = expImg.url
+        fileId = expImg.fileId
+        finalSource = expImg.source
+      }
+    } else if (source === "imagekit" && file) {
       const ik = getIK()
       const result = await ik.files.upload({
         file,
         fileName,
-        folder: "/experience",
+        folder: "/portfolio",
         useUniqueFileName: true,
       })
       finalUrl = result.url
@@ -47,28 +51,27 @@ export async function POST(
     }
 
     if (!finalUrl) {
-      return NextResponse.json({ error: "URL or file required" }, { status: 400 })
+      return NextResponse.json({ error: "URL, file, or experienceImageId required" }, { status: 400 })
     }
 
-    // If this is set as logo, unset other logos for this experience
     if (isLogo) {
-      await prisma.experienceImage.updateMany({
-        where: { experienceId, isLogo: true },
+      await prisma.portfolioImage.updateMany({
+        where: { portfolioId, isLogo: true },
         data: { isLogo: false },
       })
     }
 
-    const count = await prisma.experienceImage.count({ where: { experienceId } })
+    const count = await prisma.portfolioImage.count({ where: { portfolioId } })
 
-    const image = await prisma.experienceImage.create({
+    const image = await prisma.portfolioImage.create({
       data: {
         url: finalUrl,
         fileId,
-        source,
+        source: finalSource,
         isLogo,
-        caption: caption ?? null,
         order: count,
-        experienceId,
+        portfolioId,
+        experienceImageId: experienceImageId || null,
       },
     })
 
@@ -85,25 +88,21 @@ export async function PATCH(
   const session = await auth()
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { id: experienceId } = await params
-  const { imageId, isLogo, caption, order } = await req.json()
-
-  const { prisma } = await import("@workspace/database")
+  const { id: portfolioId } = await params
+  const { imageId, isLogo, order } = await req.json()
 
   try {
     if (isLogo) {
-      // Unset others
-      await prisma.experienceImage.updateMany({
-        where: { experienceId, isLogo: true },
+      await prisma.portfolioImage.updateMany({
+        where: { portfolioId, isLogo: true },
         data: { isLogo: false },
       })
     }
 
-    const image = await prisma.experienceImage.update({
+    const image = await prisma.portfolioImage.update({
       where: { id: imageId },
       data: {
         isLogo: isLogo !== undefined ? isLogo : undefined,
-        caption: caption !== undefined ? caption : undefined,
         order: order !== undefined ? order : undefined,
       },
     })
@@ -124,20 +123,33 @@ export async function DELETE(
   const { imageId } = await req.json()
   if (!imageId) return NextResponse.json({ error: "imageId required" }, { status: 400 })
 
-  const { prisma } = await import("@workspace/database")
-
-  const image = await prisma.experienceImage.findUnique({ where: { id: imageId } })
+  const image = await prisma.portfolioImage.findUnique({ where: { id: imageId } })
   if (!image) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
   try {
+    // Check if this fileId is shared. If it came from an ExperienceImage, 
+    // we should probably NOT delete it from ImageKit unless we want to break the experience image.
+    // However, the user said "saat didelete dia hapus dulu".
+    // Let's assume they mean if it's an ImageKit source, we delete it.
+    // To be safe, we could check if any other records use this fileId.
+    
     if (image.source === "imagekit" && image.fileId) {
-      const ik = getIK()
-      await ik.files.delete(image.fileId)
+      const otherPortImgs = await prisma.portfolioImage.count({
+        where: { fileId: image.fileId, id: { not: image.id } }
+      })
+      const expImgs = await prisma.experienceImage.count({
+        where: { fileId: image.fileId }
+      })
+
+      if (otherPortImgs === 0 && expImgs === 0) {
+        const ik = getIK()
+        await ik.files.delete(image.fileId)
+      }
     }
   } catch {
     // Best-effort
   }
 
-  await prisma.experienceImage.delete({ where: { id: imageId } })
+  await prisma.portfolioImage.delete({ where: { id: imageId } })
   return NextResponse.json({ success: true })
 }

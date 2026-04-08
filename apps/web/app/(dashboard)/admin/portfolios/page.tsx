@@ -27,12 +27,14 @@ import {
 } from "lucide-react"
 import { Separator } from "@workspace/ui/components/separator"
 
+interface Tag { id: string; name: string }
+interface PortfolioImage { id: string; url: string; isLogo: boolean }
 interface Portfolio {
   id: string
   title: string
   description?: string | null
-  images: string[]
-  tags: string[]
+  images: PortfolioImage[]
+  tags: Tag[]
   order: number
   isPublished: boolean
   experience?: {

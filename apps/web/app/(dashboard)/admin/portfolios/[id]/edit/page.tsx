@@ -13,6 +13,8 @@ export default async function EditPortfolioPage({
     where: { id },
     include: {
       experience: { select: { id: true } },
+      images: { orderBy: { order: "asc" } },
+      tags: true,
     },
   })
 
@@ -25,8 +27,8 @@ export default async function EditPortfolioPage({
         id: portfolio.id,
         title: portfolio.title,
         description: portfolio.description ?? "",
-        images: portfolio.images as string[],
-        tags: portfolio.tags as string[],
+        images: portfolio.images,
+        tags: portfolio.tags,
         order: portfolio.order,
         isPublished: portfolio.isPublished,
         experienceId: portfolio.experience?.id ?? "",

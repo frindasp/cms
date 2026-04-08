@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, Loader2, Plus, Save, X } from "lucide-react"
+import { ArrowLeft, Loader2, Plus, Save, X, ImageIcon } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card"
 import { Input } from "@workspace/ui/components/input"
@@ -14,17 +14,33 @@ import { Switch } from "@workspace/ui/components/switch"
 import { Textarea } from "@workspace/ui/components/textarea"
 import { Badge } from "@workspace/ui/components/badge"
 
+import { TagInput } from "@/components/tag-input"
+import { PortfolioImageUploader } from "@/components/portfolio-image-uploader"
+
 interface ExperienceOption {
   id: string
   company: string
   role: string
 }
 
+interface PortfolioImageItem {
+  id: string
+  url: string
+  source: string
+  isLogo: boolean
+  order: number
+}
+
+interface TagItem {
+  id: string
+  name: string
+}
+
 interface PortfolioFormData {
   id?: string
   title: string
   description: string
-  images: string[]
+  images: PortfolioImageItem[]
   tags: string[]
   order: number
   isPublished: boolean
@@ -33,7 +49,7 @@ interface PortfolioFormData {
 
 interface PortfolioFormProps {
   mode: "new" | "edit"
-  initial?: Partial<PortfolioFormData>
+  initial?: any
 }
 
 const emptyForm: PortfolioFormData = {
@@ -62,14 +78,15 @@ export function PortfolioForm({ mode, initial }: PortfolioFormProps) {
   const queryClient = useQueryClient()
   const [form, setForm] = useState<PortfolioFormData>({
     ...emptyForm,
-    ...initial,
+    id: initial?.id,
+    title: initial?.title ?? "",
     description: initial?.description ?? "",
     images: initial?.images ?? [],
-    tags: initial?.tags ?? [],
+    tags: initial?.tags?.map((t: any) => t.name) ?? [],
     experienceId: initial?.experienceId ?? "",
+    order: initial?.order ?? 0,
+    isPublished: initial?.isPublished ?? true,
   })
-  const [imageInput, setImageInput] = useState("")
-  const [tagInput, setTagInput] = useState("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -80,28 +97,6 @@ export function PortfolioForm({ mode, initial }: PortfolioFormProps) {
 
   const set = <K extends keyof PortfolioFormData>(key: K, value: PortfolioFormData[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }))
-  }
-
-  const addImage = () => {
-    const value = imageInput.trim()
-    if (!value) return
-    set("images", [...form.images, value])
-    setImageInput("")
-  }
-
-  const removeImage = (idx: number) => {
-    set("images", form.images.filter((_, i) => i !== idx))
-  }
-
-  const addTag = () => {
-    const value = tagInput.trim()
-    if (!value) return
-    set("tags", [...form.tags, value])
-    setTagInput("")
-  }
-
-  const removeTag = (idx: number) => {
-    set("tags", form.tags.filter((_, i) => i !== idx))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -116,7 +111,6 @@ export function PortfolioForm({ mode, initial }: PortfolioFormProps) {
       const payload = {
         title: form.title,
         description: form.description || null,
-        images: form.images,
         tags: form.tags,
         order: form.order,
         isPublished: form.isPublished,
@@ -152,7 +146,7 @@ export function PortfolioForm({ mode, initial }: PortfolioFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 max-w-3xl">
+    <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl pb-20">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" asChild>
           <Link href="/admin/portfolios">
@@ -177,158 +171,137 @@ export function PortfolioForm({ mode, initial }: PortfolioFormProps) {
         </div>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Informasi Utama</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="title">Judul *</Label>
-            <Input
-              id="title"
-              value={form.title}
-              onChange={(e) => set("title", e.target.value)}
-              placeholder="Interior Renovation Project"
-              required
-            />
-          </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="md:col-span-2 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base font-semibold">Informasi Utama</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="title">Judul *</Label>
+                <Input
+                  id="title"
+                  value={form.title}
+                  onChange={(e) => set("title", e.target.value)}
+                  placeholder="Interior Renovation Project"
+                  required
+                  className="text-lg font-medium h-12"
+                />
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="description">Deskripsi</Label>
-            <Textarea
-              id="description"
-              value={form.description}
-              onChange={(e) => set("description", e.target.value)}
-              placeholder="Tulis deskripsi singkat project..."
-              rows={4}
-            />
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">Deskripsi</Label>
+                <Textarea
+                  id="description"
+                  value={form.description}
+                  onChange={(e) => set("description", e.target.value)}
+                  placeholder="Tulis deskripsi singkat project..."
+                  rows={8}
+                  className="resize-none"
+                />
+              </div>
+            </CardContent>
+          </Card>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="experienceId">Relasi Experience</Label>
-              <select
-                id="experienceId"
-                value={form.experienceId}
-                onChange={(e) => set("experienceId", e.target.value)}
-                className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-              >
-                <option value="">Tanpa Experience</option>
-                {experiences.map((exp) => (
-                  <option key={exp.id} value={exp.id}>
-                    {exp.company} — {exp.role}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="order">Urutan</Label>
-              <Input
-                id="order"
-                type="number"
-                min={0}
-                value={form.order}
-                onChange={(e) => set("order", parseInt(e.target.value) || 0)}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <ImageIcon className="w-4 h-4" />
+                Portfolio Images
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <PortfolioImageUploader
+                portfolioId={form.id}
+                experienceId={form.experienceId}
+                images={form.images}
+                onImagesChange={(imgs) => set("images", imgs)}
               />
-            </div>
-          </div>
+            </CardContent>
+          </Card>
+        </div>
 
-          <div className="flex items-center justify-between rounded-md border p-3">
-            <div>
-              <Label htmlFor="isPublished" className="text-sm font-medium">Published</Label>
-              <p className="text-xs text-muted-foreground">Jika nonaktif maka item menjadi draft.</p>
-            </div>
-            <Switch
-              id="isPublished"
-              checked={form.isPublished}
-              onCheckedChange={(v) => set("isPublished", v)}
-            />
-          </div>
-        </CardContent>
-      </Card>
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base font-semibold">Settings & Relations</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="space-y-2">
+                <Label htmlFor="experienceId">Relasi Experience</Label>
+                <select
+                  id="experienceId"
+                  value={form.experienceId}
+                  onChange={(e) => set("experienceId", e.target.value)}
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                >
+                  <option value="">Tanpa Experience</option>
+                  {experiences.map((exp) => (
+                    <option key={exp.id} value={exp.id}>
+                      {exp.company} — {exp.role}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-muted-foreground">Menghubungkan ke experience memungkinkan Anda memilih gambar dari riwayat kerja tersebut.</p>
+              </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Images URL</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex gap-2">
-            <Input
-              value={imageInput}
-              onChange={(e) => setImageInput(e.target.value)}
-              placeholder="https://..."
-            />
-            <Button type="button" variant="outline" onClick={addImage}>
-              <Plus className="w-4 h-4 mr-1" />
-              Add
-            </Button>
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="order">Urutan Tampil</Label>
+                <Input
+                  id="order"
+                  type="number"
+                  min={0}
+                  value={form.order}
+                  onChange={(e) => set("order", parseInt(e.target.value) || 0)}
+                />
+              </div>
 
-          {form.images.length > 0 && (
-            <div className="space-y-2">
-              {form.images.map((img, i) => (
-                <div key={i} className="flex items-center gap-2 rounded-md border px-3 py-2">
-                  <p className="text-xs truncate flex-1">{img}</p>
-                  <Button type="button" variant="ghost" size="icon" onClick={() => removeImage(i)}>
-                    <X className="w-4 h-4" />
-                  </Button>
+              <Separator />
+
+              <div className="flex items-center justify-between rounded-md border bg-muted/20 p-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="isPublished" className="text-sm font-medium">Published</Label>
+                  <p className="text-[10px] text-muted-foreground">Tampilkan di website publik.</p>
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                <Switch
+                  id="isPublished"
+                  checked={form.isPublished}
+                  onCheckedChange={(v) => set("isPublished", v)}
+                />
+              </div>
+            </CardContent>
+          </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Tags</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex gap-2">
-            <Input
-              value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              placeholder="interior"
-            />
-            <Button type="button" variant="outline" onClick={addTag}>
-              <Plus className="w-4 h-4 mr-1" />
-              Add
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base font-semibold">Tags / Kategori</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TagInput
+                value={form.tags}
+                onChange={(tags) => set("tags", tags)}
+                placeholder="Tambah kategori (e.g. Interior, Concept...)"
+              />
+            </CardContent>
+          </Card>
+
+          <div className="sticky top-6">
+            <Button type="submit" disabled={saving} className="w-full h-12 text-base font-semibold shadow-xl">
+              {saving ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Menyimpan...
+                </>
+              ) : (
+                <>
+                  <Save className="w-5 h-5 mr-2" />
+                  Simpan Perubahan
+                </>
+              )}
             </Button>
           </div>
-
-          {form.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {form.tags.map((tag, i) => (
-                <Badge key={`${tag}-${i}`} variant="secondary" className="gap-1">
-                  {tag}
-                  <button
-                    type="button"
-                    onClick={() => removeTag(i)}
-                    className="ml-1 hover:text-destructive"
-                  >
-                    ×
-                  </button>
-                </Badge>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <div className="flex justify-end">
-        <Button type="submit" disabled={saving} className="min-w-32">
-          {saving ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Menyimpan...
-            </>
-          ) : (
-            <>
-              <Save className="w-4 h-4 mr-2" />
-              Simpan
-            </>
-          )}
-        </Button>
+        </div>
       </div>
     </form>
   )

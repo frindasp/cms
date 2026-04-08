@@ -22,7 +22,9 @@ import Link from "next/link"
 interface ExperienceImage {
   id: string
   url: string
-  fileId: string
+  fileId?: string | null
+  source: string
+  isLogo: boolean
   caption?: string | null
   order: number
 }

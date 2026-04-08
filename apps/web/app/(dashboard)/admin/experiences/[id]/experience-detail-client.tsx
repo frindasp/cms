@@ -46,13 +46,23 @@ import {
 } from "lucide-react"
 
 interface Skill { id: string; name: string }
-interface ExperienceImage { id: string; url: string; fileId: string; caption?: string | null; order: number }
+interface ExperienceImage { 
+  id: string; 
+  url: string; 
+  fileId?: string | null; 
+  source: string;
+  isLogo: boolean;
+  caption?: string | null; 
+  order: number 
+}
+interface Tag { id: string; name: string }
+interface PortfolioImage { id: string; url: string; isLogo: boolean; source: string; order: number }
 interface Portfolio {
   id: string
   title: string
   description?: string | null
-  images: string[]
-  tags: string[]
+  images: PortfolioImage[]
+  tags: Tag[]
   order: number
   isPublished: boolean
 }
@@ -123,7 +133,7 @@ export function ExperienceDetailClient({ experience: initial }: ExperienceDetail
   })
 
   const periodLabel = computePeriodLabel(exp.startDate, exp.endDate)
-  const coverImage = exp.images[0]
+  const coverImage = exp.images.find(img => img.isLogo) || exp.images[0]
 
   return (
     <div className="space-y-6 max-w-3xl">

@@ -5,6 +5,7 @@ import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card"
 import { ArrowLeft, Pencil } from "lucide-react"
+import { Separator } from "@workspace/ui/components/separator"
 
 export default async function PortfolioDetailPage({
   params,
@@ -23,6 +24,8 @@ export default async function PortfolioDetailPage({
           role: true,
         },
       },
+      images: { orderBy: { order: "asc" } },
+      tags: true,
     },
   })
 
@@ -55,46 +58,56 @@ export default async function PortfolioDetailPage({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Informasi</CardTitle>
+          <CardTitle className="text-base font-semibold">Informasi</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3 text-sm">
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground">Status:</span>
-            <Badge variant={portfolio.isPublished ? "default" : "secondary"}>
-              {portfolio.isPublished ? "Published" : "Draft"}
-            </Badge>
+        <CardContent className="space-y-4 text-sm">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground">Status:</span>
+              <Badge variant={portfolio.isPublished ? "default" : "secondary"}>
+                {portfolio.isPublished ? "Published" : "Draft"}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground">Urutan:</span>
+              <Badge variant="outline">{portfolio.order}</Badge>
+            </div>
           </div>
-          <p>
-            <span className="text-muted-foreground">Urutan:</span> {portfolio.order}
-          </p>
-          {portfolio.description && (
-            <p>
-              <span className="text-muted-foreground">Deskripsi:</span> {portfolio.description}
+          
+          <Separator />
+          
+          <div className="space-y-2">
+            <span className="text-muted-foreground font-medium">Deskripsi:</span>
+            <p className="whitespace-pre-wrap leading-relaxed text-foreground/80">
+              {portfolio.description || <span className="italic text-muted-foreground/50">Tidak ada deskripsi.</span>}
             </p>
-          )}
+          </div>
+
           {portfolio.experience && (
-            <p>
-              <span className="text-muted-foreground">Experience:</span>{" "}
-              <Link className="underline" href={`/admin/experiences/${portfolio.experience.id}`}>
-                {portfolio.experience.company} — {portfolio.experience.role}
-              </Link>
-            </p>
+            <div className="rounded-lg bg-muted/30 p-3 border">
+              <span className="text-muted-foreground text-xs uppercase font-bold tracking-wider">Experience</span>
+              <div className="mt-1">
+                <Link className="font-medium hover:underline text-primary" href={`/admin/experiences/${portfolio.experience.id}`}>
+                  {portfolio.experience.company} — {portfolio.experience.role}
+                </Link>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Tags</CardTitle>
+          <CardTitle className="text-base font-semibold">Category Tags</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
-            {(portfolio.tags as string[]).length > 0 ? (
-              (portfolio.tags as string[]).map((tag, i) => (
-                <Badge key={`${tag}-${i}`} variant="secondary">{tag}</Badge>
+            {portfolio.tags.length > 0 ? (
+              portfolio.tags.map((tag) => (
+                <Badge key={tag.id} variant="secondary" className="px-3 py-1 font-medium">{tag.name}</Badge>
               ))
             ) : (
-              <p className="text-sm text-muted-foreground">Belum ada tag.</p>
+              <p className="text-sm text-muted-foreground italic">Belum ada tag.</p>
             )}
           </div>
         </CardContent>
@@ -102,25 +115,36 @@ export default async function PortfolioDetailPage({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Images</CardTitle>
+          <CardTitle className="text-base font-semibold">Project Images</CardTitle>
         </CardHeader>
         <CardContent>
-          {(portfolio.images as string[]).length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {(portfolio.images as string[]).map((img, i) => (
-                <a
-                  key={`${img}-${i}`}
-                  href={img}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="rounded-md border p-3 text-xs text-primary underline truncate"
-                >
-                  {img}
-                </a>
+          {portfolio.images.length > 0 ? (
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+              {portfolio.images.map((img) => (
+                <div key={img.id} className="group relative aspect-square rounded-xl overflow-hidden border bg-muted">
+                  <img
+                    src={img.url}
+                    alt={portfolio.title}
+                    className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                  />
+                  {img.isLogo && (
+                    <div className="absolute top-2 left-2 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg">
+                      LOGO
+                    </div>
+                  )}
+                  <a
+                    href={img.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="absolute inset-x-0 bottom-0 bg-black/60 text-white p-2 text-[10px] opacity-0 group-hover:opacity-100 transition-opacity truncate"
+                  >
+                    {img.url}
+                  </a>
+                </div>
               ))}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">Belum ada image URL.</p>
+            <p className="text-sm text-muted-foreground italic text-center py-8 border-2 border-dashed rounded-xl">Belum ada image.</p>
           )}
         </CardContent>
       </Card>
