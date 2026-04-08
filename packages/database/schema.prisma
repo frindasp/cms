@@ -175,7 +175,7 @@ model Skill {
 }
 
 model Experience {
-  id          String   @id @default(cuid())
+  id          String            @id @default(cuid())
   company     String
   role        String
   type        String
@@ -184,10 +184,40 @@ model Experience {
   location    String
   skills      Skill[]
   description Json
-  imageUrl    String?
-  imageFileId String?
-  order       Int      @default(0)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  images      ExperienceImage[]
+  portfolios  Portfolio[]
+  order       Int               @default(0)
+  isActive    Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
 }
+
+model ExperienceImage {
+  id           String     @id @default(cuid())
+  url          String
+  fileId       String
+  caption      String?
+  order        Int        @default(0)
+  experienceId String
+  experience   Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@index([experienceId])
+}
+
+model Portfolio {
+  id           String     @id @default(cuid())
+  title        String
+  description  String?    @db.Text
+  images       Json       @default("[]")
+  tags         Json       @default("[]")
+  experienceId String?
+  experience   Experience? @relation(fields: [experienceId], references: [id], onDelete: SetNull)
+  order        Int        @default(0)
+  isPublished  Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([experienceId])
+}
+

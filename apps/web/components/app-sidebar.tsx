@@ -12,6 +12,8 @@ import {
   Shield,
   FileText,
   Briefcase,
+  Zap,
+  FolderOpen,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -91,6 +93,16 @@ const portfolioItems = [
     title: "Experiences",
     url: APP_ROUTES.ADMIN.EXPERIENCES,
     icon: Briefcase,
+  },
+  {
+    title: "Skills",
+    url: APP_ROUTES.ADMIN.SKILLS,
+    icon: Zap,
+  },
+  {
+    title: "Portfolio",
+    url: APP_ROUTES.ADMIN.PORTFOLIOS,
+    icon: FolderOpen,
   },
 ];
 

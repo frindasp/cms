@@ -7,6 +7,8 @@ export const APP_ROUTES = {
     DASHBOARD: "/admin",
     ABOUT: "/admin/about",
     EXPERIENCES: "/admin/experiences",
+    SKILLS: "/admin/skills",
+    PORTFOLIOS: "/admin/portfolios",
     USERS: "/admin/users",
     ROLES: "/admin/roles",
     MESSAGES: "/admin/messages",
@@ -29,6 +31,8 @@ export const API_ROUTES = {
   CONTACTS: "/api/contacts",
   ABOUT: "/api/about",
   EXPERIENCES: "/api/experiences",
+  SKILLS: "/api/skills",
+  PORTFOLIOS: "/api/portfolios",
   UPLOAD: "/api/upload",
   RESEND: {
     EMAILS: "/api/resend/emails",

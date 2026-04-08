@@ -25,6 +25,8 @@ import {
   Calendar,
   MapPin,
   GripVertical,
+  ExternalLink,
+  FolderOpen,
 } from "lucide-react"
 import { Separator } from "@workspace/ui/components/separator"
 import { computePeriodLabel } from "@/lib/period-label"
@@ -32,6 +34,11 @@ import { computePeriodLabel } from "@/lib/period-label"
 interface Skill {
   id: string
   name: string
+}
+
+interface ExperienceImage {
+  id: string
+  url: string
 }
 
 interface Experience {
@@ -44,9 +51,10 @@ interface Experience {
   location: string
   skills: Skill[]
   description: string[]
-  imageUrl?: string
+  images: ExperienceImage[]
   order: number
   isActive: boolean
+  _count?: { portfolios: number }
 }
 
 async function fetchExperiences(): Promise<Experience[]> {
@@ -126,22 +134,35 @@ export default function ExperiencesAdminPage() {
                 <div className="flex items-start gap-3">
                   <GripVertical className="w-4 h-4 text-muted-foreground mt-1 shrink-0 cursor-grab" />
 
-                  {exp.imageUrl && (
-                    <img
-                      src={exp.imageUrl}
-                      alt={exp.company}
-                      className="w-12 h-12 rounded object-cover border border-border shrink-0"
-                    />
+                  {exp.images[0] && (
+                    <Link href={`/admin/experiences/${exp.id}`}>
+                      <img
+                        src={exp.images[0].url}
+                        alt={exp.company}
+                        className="w-12 h-12 rounded object-cover border border-border shrink-0 hover:opacity-80 transition-opacity"
+                      />
+                    </Link>
                   )}
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <p className="font-semibold text-sm leading-snug">{exp.role}</p>
+                        <Link
+                          href={`/admin/experiences/${exp.id}`}
+                          className="font-semibold text-sm leading-snug hover:text-primary transition-colors"
+                        >
+                          {exp.role}
+                        </Link>
                         <p className="text-sm text-muted-foreground">
                           {exp.company}
                           <span className="mx-1.5">·</span>
                           <span>{exp.type}</span>
+                          {exp._count && exp._count.portfolios > 0 && (
+                            <span className="ml-2 inline-flex items-center gap-0.5 text-xs text-muted-foreground">
+                              <FolderOpen className="w-3 h-3" />
+                              {exp._count.portfolios}
+                            </span>
+                          )}
                         </p>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">

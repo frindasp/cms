@@ -1,10 +1,11 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useQueryClient } from "@tanstack/react-query"
 import { computePeriodLabel } from "@/lib/period-label"
 import { SkillCombobox } from "@/components/skill-combobox"
+import { ExperienceImageUploader } from "@/components/experience-image-uploader"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
@@ -12,16 +13,19 @@ import { Textarea } from "@workspace/ui/components/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card"
 import { Switch } from "@workspace/ui/components/switch"
 import { Separator } from "@workspace/ui/components/separator"
+import { Badge } from "@workspace/ui/components/badge"
 import {
-  Loader2,
-  Save,
-  X,
-  Plus,
-  ImageIcon,
-  Trash2,
-  ArrowLeft,
+  Loader2, Save, Plus, Trash2, ArrowLeft, ImageIcon,
 } from "lucide-react"
 import Link from "next/link"
+
+interface ExperienceImage {
+  id: string
+  url: string
+  fileId: string
+  caption?: string | null
+  order: number
+}
 
 interface ExperienceFormData {
   id?: string
@@ -31,11 +35,9 @@ interface ExperienceFormData {
   startDate: string
   endDate: string
   location: string
-  /** Skill names (not IDs) — API handles upsert */
   skills: string[]
   description: string[]
-  imageUrl: string
-  imageFileId: string
+  images: ExperienceImage[]
   order: number
   isActive: boolean
 }
@@ -54,8 +56,7 @@ const emptyForm: ExperienceFormData = {
   location: "",
   skills: [],
   description: [],
-  imageUrl: "",
-  imageFileId: "",
+  images: [],
   order: 0,
   isActive: true,
 }
@@ -69,10 +70,7 @@ export function ExperienceForm({ initial, mode }: ExperienceFormProps) {
   })
   const [descInput, setDescInput] = useState("")
   const [saving, setSaving] = useState(false)
-  const [uploading, setUploading] = useState(false)
-  const [uploadPreview, setUploadPreview] = useState<string>(initial?.imageUrl ?? "")
   const [error, setError] = useState<string | null>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
 
   const set = <K extends keyof ExperienceFormData>(key: K, value: ExperienceFormData[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -88,43 +86,6 @@ export function ExperienceForm({ initial, mode }: ExperienceFormProps) {
     set("description", form.description.filter((_, idx) => idx !== i))
   }
 
-  // Upload image via API
-  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setUploading(true)
-    setError(null)
-    try {
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve((reader.result as string).split(",")[1]!)
-        reader.onerror = reject
-        reader.readAsDataURL(file)
-      })
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ file: base64, fileName: file.name, folder: "/portfolio/experiences" }),
-      })
-      if (!res.ok) throw new Error("Upload failed")
-      const data = await res.json()
-      set("imageUrl", data.url)
-      set("imageFileId", data.fileId)
-      setUploadPreview(data.url)
-    } catch (err: any) {
-      setError(err.message || "Image upload failed")
-    } finally {
-      setUploading(false)
-    }
-  }
-
-  const removeImage = () => {
-    set("imageUrl", "")
-    set("imageFileId", "")
-    setUploadPreview("")
-    if (fileRef.current) fileRef.current.value = ""
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
@@ -132,15 +93,27 @@ export function ExperienceForm({ initial, mode }: ExperienceFormProps) {
     try {
       const url = mode === "new" ? "/api/experiences" : `/api/experiences/${form.id}`
       const method = mode === "new" ? "POST" : "PUT"
+
+      // Send skills as names; images are managed separately via the uploader
+      const { images: _images, ...payload } = form
+
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       })
       if (!res.ok) throw new Error("Save failed")
-      // Invalidate skills cache so new skills show up immediately in other forms
+
+      const saved = await res.json()
       queryClient.invalidateQueries({ queryKey: ["skills"] })
-      router.push("/admin/experiences")
+      queryClient.invalidateQueries({ queryKey: ["experiences"] })
+
+      // After creating a new experience, go to its detail/edit page so user can upload images
+      if (mode === "new") {
+        router.push(`/admin/experiences/${saved.id}`)
+      } else {
+        router.push("/admin/experiences")
+      }
       router.refresh()
     } catch (err: any) {
       setError(err.message || "Something went wrong")
@@ -164,7 +137,9 @@ export function ExperienceForm({ initial, mode }: ExperienceFormProps) {
             {mode === "new" ? "Add Experience" : "Edit Experience"}
           </h1>
           <p className="text-muted-foreground mt-0.5 text-sm">
-            {mode === "new" ? "Create a new work experience entry." : "Update this experience entry."}
+            {mode === "new"
+              ? "Create a new work experience entry. You can add images after saving."
+              : "Update this experience entry."}
           </p>
         </div>
       </div>
@@ -279,54 +254,33 @@ export function ExperienceForm({ initial, mode }: ExperienceFormProps) {
         </CardContent>
       </Card>
 
-      {/* Image */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Company / Project Image</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {uploadPreview ? (
-            <div className="relative inline-block">
-              <img
-                src={uploadPreview}
-                alt="Preview"
-                className="w-32 h-32 object-cover rounded-lg border border-border"
-              />
-              <Button
-                type="button"
-                variant="destructive"
-                size="icon"
-                className="absolute -top-2 -right-2 h-6 w-6"
-                onClick={removeImage}
-              >
-                <X className="w-3 h-3" />
-              </Button>
-            </div>
-          ) : (
-            <div
-              className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:bg-muted/50 transition-colors"
-              onClick={() => fileRef.current?.click()}
-            >
-              {uploading ? (
-                <Loader2 className="w-8 h-8 mx-auto animate-spin text-muted-foreground" />
-              ) : (
-                <>
-                  <ImageIcon className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground">Click to upload image</p>
-                  <p className="text-xs text-muted-foreground mt-1">PNG, JPG, WEBP up to 10MB · Stored on ImageKit</p>
-                </>
-              )}
-            </div>
-          )}
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
-          {!uploadPreview && !uploading && (
-            <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => fileRef.current?.click()}>
-              <ImageIcon className="w-3.5 h-3.5" />
-              Upload Image
-            </Button>
-          )}
-        </CardContent>
-      </Card>
+      {/* Images — only available in edit mode */}
+      {mode === "edit" && form.id ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              Images
+              <Badge variant="secondary" className="text-xs">{form.images.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ExperienceImageUploader
+              experienceId={form.id}
+              images={form.images}
+              onImagesChange={(imgs) => set("images", imgs)}
+            />
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="border-dashed">
+          <CardContent className="pt-5 pb-5 flex items-center gap-3 text-muted-foreground">
+            <ImageIcon className="w-5 h-5 shrink-0" />
+            <p className="text-sm">
+              Images can be uploaded after saving this experience.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Skills */}
       <Card>

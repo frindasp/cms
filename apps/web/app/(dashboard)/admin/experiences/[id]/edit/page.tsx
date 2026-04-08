@@ -10,7 +10,10 @@ export default async function EditExperiencePage({
   const { id } = await params
   const exp = await prisma.experience.findUnique({
     where: { id },
-    include: { skills: { orderBy: { name: "asc" } } },
+    include: {
+      skills: { orderBy: { name: "asc" } },
+      images: { orderBy: { order: "asc" } },
+    },
   })
   if (!exp) notFound()
 
@@ -25,11 +28,9 @@ export default async function EditExperiencePage({
         startDate: exp.startDate,
         endDate: exp.endDate ?? "",
         location: exp.location,
-        // Map Skill objects → string names for the form
         skills: exp.skills.map((s) => s.name),
         description: exp.description as string[],
-        imageUrl: exp.imageUrl ?? "",
-        imageFileId: exp.imageFileId ?? "",
+        images: exp.images,
         order: exp.order,
         isActive: exp.isActive,
       }}

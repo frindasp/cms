@@ -5,7 +5,11 @@ import { auth } from "@/auth"
 export async function GET() {
   const experiences = await prisma.experience.findMany({
     orderBy: { order: "asc" },
-    include: { skills: { orderBy: { name: "asc" } } },
+    include: {
+      skills: { orderBy: { name: "asc" } },
+      images: { orderBy: { order: "asc" } },
+      _count: { select: { portfolios: true } },
+    },
   })
   return NextResponse.json(experiences)
 }
@@ -16,7 +20,9 @@ export async function POST(req: Request) {
 
   const { skills: skillNames = [], ...rest } = await req.json()
 
-  // Upsert each skill by name, then connect
+  // Strip any legacy imageUrl/imageFileId that may come from old form
+  const { imageUrl: _imageUrl, imageFileId: _imageFileId, ...cleanRest } = rest
+
   const skillOps = (skillNames as string[]).map((name: string) => ({
     where: { name },
     create: { name },
@@ -24,10 +30,13 @@ export async function POST(req: Request) {
 
   const experience = await prisma.experience.create({
     data: {
-      ...rest,
+      ...cleanRest,
       skills: { connectOrCreate: skillOps },
     },
-    include: { skills: { orderBy: { name: "asc" } } },
+    include: {
+      skills: { orderBy: { name: "asc" } },
+      images: { orderBy: { order: "asc" } },
+    },
   })
 
   return NextResponse.json(experience, { status: 201 })
