@@ -1,14 +1,17 @@
-"use client";
+"use client"
 
-import { useState, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@workspace/ui/components/button";
-import { Input } from "@workspace/ui/components/input";
-import { Label } from "@workspace/ui/components/label";
-import { Textarea } from "@workspace/ui/components/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card";
-import { Switch } from "@workspace/ui/components/switch";
-import { Separator } from "@workspace/ui/components/separator";
+import { useState, useRef } from "react"
+import { useRouter } from "next/navigation"
+import { useQueryClient } from "@tanstack/react-query"
+import { computePeriodLabel } from "@/lib/period-label"
+import { SkillCombobox } from "@/components/skill-combobox"
+import { Button } from "@workspace/ui/components/button"
+import { Input } from "@workspace/ui/components/input"
+import { Label } from "@workspace/ui/components/label"
+import { Textarea } from "@workspace/ui/components/textarea"
+import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card"
+import { Switch } from "@workspace/ui/components/switch"
+import { Separator } from "@workspace/ui/components/separator"
 import {
   Loader2,
   Save,
@@ -17,29 +20,29 @@ import {
   ImageIcon,
   Trash2,
   ArrowLeft,
-} from "lucide-react";
-import Link from "next/link";
+} from "lucide-react"
+import Link from "next/link"
 
 interface ExperienceFormData {
-  id?: string;
-  company: string;
-  role: string;
-  type: string;
-  startDate: string;
-  endDate: string;
-  periodLabel: string;
-  location: string;
-  skills: string[];
-  description: string[];
-  imageUrl: string;
-  imageFileId: string;
-  order: number;
-  isActive: boolean;
+  id?: string
+  company: string
+  role: string
+  type: string
+  startDate: string
+  endDate: string
+  location: string
+  /** Skill names (not IDs) — API handles upsert */
+  skills: string[]
+  description: string[]
+  imageUrl: string
+  imageFileId: string
+  order: number
+  isActive: boolean
 }
 
 interface ExperienceFormProps {
-  initial?: Partial<ExperienceFormData>;
-  mode: "new" | "edit";
+  initial?: Partial<ExperienceFormData>
+  mode: "new" | "edit"
 }
 
 const emptyForm: ExperienceFormData = {
@@ -48,7 +51,6 @@ const emptyForm: ExperienceFormData = {
   type: "Purnawaktu",
   startDate: "",
   endDate: "",
-  periodLabel: "",
   location: "",
   skills: [],
   description: [],
@@ -56,123 +58,98 @@ const emptyForm: ExperienceFormData = {
   imageFileId: "",
   order: 0,
   isActive: true,
-};
+}
 
 export function ExperienceForm({ initial, mode }: ExperienceFormProps) {
-  const router = useRouter();
+  const router = useRouter()
+  const queryClient = useQueryClient()
   const [form, setForm] = useState<ExperienceFormData>({
     ...emptyForm,
     ...initial,
-  });
-  const [skillInput, setSkillInput] = useState("");
-  const [descInput, setDescInput] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [uploadPreview, setUploadPreview] = useState<string>(initial?.imageUrl ?? "");
-  const [error, setError] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
+  })
+  const [descInput, setDescInput] = useState("")
+  const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [uploadPreview, setUploadPreview] = useState<string>(initial?.imageUrl ?? "")
+  const [error, setError] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const set = <K extends keyof ExperienceFormData>(key: K, value: ExperienceFormData[K]) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const addSkill = () => {
-    const s = skillInput.trim();
-    if (s && !form.skills.includes(s)) {
-      set("skills", [...form.skills, s]);
-    }
-    setSkillInput("");
-  };
-
-  const removeSkill = (s: string) => {
-    set("skills", form.skills.filter((x) => x !== s));
-  };
+    setForm((prev) => ({ ...prev, [key]: value }))
+  }
 
   const addDesc = () => {
-    const d = descInput.trim();
-    if (d) {
-      set("description", [...form.description, d]);
-    }
-    setDescInput("");
-  };
+    const d = descInput.trim()
+    if (d) set("description", [...form.description, d])
+    setDescInput("")
+  }
 
   const removeDesc = (i: number) => {
-    set("description", form.description.filter((_, idx) => idx !== i));
-  };
+    set("description", form.description.filter((_, idx) => idx !== i))
+  }
 
   // Upload image via API
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploading(true);
-    setError(null);
-
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    setError(null)
     try {
-      // Convert to base64
       const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve((reader.result as string).split(",")[1]!);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-
+        const reader = new FileReader()
+        reader.onload = () => resolve((reader.result as string).split(",")[1]!)
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
       const res = await fetch("/api/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          file: base64,
-          fileName: file.name,
-          folder: "/portfolio/experiences",
-        }),
-      });
-
-      if (!res.ok) throw new Error("Upload failed");
-
-      const data = await res.json();
-      set("imageUrl", data.url);
-      set("imageFileId", data.fileId);
-      setUploadPreview(data.url);
+        body: JSON.stringify({ file: base64, fileName: file.name, folder: "/portfolio/experiences" }),
+      })
+      if (!res.ok) throw new Error("Upload failed")
+      const data = await res.json()
+      set("imageUrl", data.url)
+      set("imageFileId", data.fileId)
+      setUploadPreview(data.url)
     } catch (err: any) {
-      setError(err.message || "Image upload failed");
+      setError(err.message || "Image upload failed")
     } finally {
-      setUploading(false);
+      setUploading(false)
     }
-  };
+  }
 
   const removeImage = () => {
-    set("imageUrl", "");
-    set("imageFileId", "");
-    setUploadPreview("");
-    if (fileRef.current) fileRef.current.value = "";
-  };
+    set("imageUrl", "")
+    set("imageFileId", "")
+    setUploadPreview("")
+    if (fileRef.current) fileRef.current.value = ""
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    setError(null);
-
+    e.preventDefault()
+    setSaving(true)
+    setError(null)
     try {
-      const url = mode === "new" ? "/api/experiences" : `/api/experiences/${form.id}`;
-      const method = mode === "new" ? "POST" : "PUT";
-
+      const url = mode === "new" ? "/api/experiences" : `/api/experiences/${form.id}`
+      const method = mode === "new" ? "POST" : "PUT"
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
-      });
-
-      if (!res.ok) throw new Error("Save failed");
-      router.push("/admin/experiences");
-      router.refresh();
+      })
+      if (!res.ok) throw new Error("Save failed")
+      // Invalidate skills cache so new skills show up immediately in other forms
+      queryClient.invalidateQueries({ queryKey: ["skills"] })
+      router.push("/admin/experiences")
+      router.refresh()
     } catch (err: any) {
-      setError(err.message || "Something went wrong");
+      setError(err.message || "Something went wrong")
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
-  const employmentTypes = ["Purnawaktu", "Paruh Waktu", "Kontrak", "Magang", "Pekerja Lepas", "Sementara"];
+  const employmentTypes = ["Purnawaktu", "Paruh Waktu", "Kontrak", "Magang", "Pekerja Lepas", "Sementara"]
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
@@ -293,19 +270,12 @@ export function ExperienceForm({ initial, mode }: ExperienceFormProps) {
               />
             </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="periodLabel">Period Label *</Label>
-            <Input
-              id="periodLabel"
-              value={form.periodLabel}
-              onChange={(e) => set("periodLabel", e.target.value)}
-              placeholder="Feb 2026 – Saat ini · 3 bln"
-              required
-            />
-            <p className="text-xs text-muted-foreground">
-              Human-readable label shown on the portfolio (e.g. "Feb 2026 – Now · 3 months")
-            </p>
-          </div>
+          {form.startDate && (
+            <div className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">Preview: </span>
+              {computePeriodLabel(form.startDate, form.endDate || null)}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -348,13 +318,7 @@ export function ExperienceForm({ initial, mode }: ExperienceFormProps) {
               )}
             </div>
           )}
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleImageChange}
-          />
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
           {!uploadPreview && !uploading && (
             <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => fileRef.current?.click()}>
               <ImageIcon className="w-3.5 h-3.5" />
@@ -369,36 +333,11 @@ export function ExperienceForm({ initial, mode }: ExperienceFormProps) {
         <CardHeader>
           <CardTitle className="text-base">Skills</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex gap-2">
-            <Input
-              value={skillInput}
-              onChange={(e) => setSkillInput(e.target.value)}
-              placeholder="e.g. AutoCAD"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  addSkill();
-                }
-              }}
-            />
-            <Button type="button" variant="outline" size="icon" onClick={addSkill}>
-              <Plus className="w-4 h-4" />
-            </Button>
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {form.skills.map((s) => (
-              <span
-                key={s}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs bg-muted border border-border"
-              >
-                {s}
-                <button type="button" onClick={() => removeSkill(s)} className="text-muted-foreground hover:text-destructive">
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
-            ))}
-          </div>
+        <CardContent>
+          <SkillCombobox
+            value={form.skills}
+            onChange={(names) => set("skills", names)}
+          />
         </CardContent>
       </Card>
 
@@ -457,11 +396,7 @@ export function ExperienceForm({ initial, mode }: ExperienceFormProps) {
       {/* Submit */}
       <div className="flex gap-3">
         <Button type="submit" disabled={saving} className="gap-2">
-          {saving ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Save className="w-4 h-4" />
-          )}
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           {saving ? "Saving..." : mode === "new" ? "Create Experience" : "Save Changes"}
         </Button>
         <Button type="button" variant="outline" asChild>
@@ -469,5 +404,5 @@ export function ExperienceForm({ initial, mode }: ExperienceFormProps) {
         </Button>
       </div>
     </form>
-  );
+  )
 }

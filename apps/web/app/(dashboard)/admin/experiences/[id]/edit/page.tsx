@@ -1,15 +1,18 @@
-import { prisma } from "@workspace/database";
-import { notFound } from "next/navigation";
-import { ExperienceForm } from "../../experience-form";
+import { prisma } from "@workspace/database"
+import { notFound } from "next/navigation"
+import { ExperienceForm } from "../../experience-form"
 
 export default async function EditExperiencePage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string }>
 }) {
-  const { id } = await params;
-  const exp = await prisma.experience.findUnique({ where: { id } });
-  if (!exp) notFound();
+  const { id } = await params
+  const exp = await prisma.experience.findUnique({
+    where: { id },
+    include: { skills: { orderBy: { name: "asc" } } },
+  })
+  if (!exp) notFound()
 
   return (
     <ExperienceForm
@@ -21,9 +24,9 @@ export default async function EditExperiencePage({
         type: exp.type,
         startDate: exp.startDate,
         endDate: exp.endDate ?? "",
-        periodLabel: exp.periodLabel,
         location: exp.location,
-        skills: exp.skills as string[],
+        // Map Skill objects → string names for the form
+        skills: exp.skills.map((s) => s.name),
         description: exp.description as string[],
         imageUrl: exp.imageUrl ?? "",
         imageFileId: exp.imageFileId ?? "",
@@ -31,5 +34,5 @@ export default async function EditExperiencePage({
         isActive: exp.isActive,
       }}
     />
-  );
+  )
 }

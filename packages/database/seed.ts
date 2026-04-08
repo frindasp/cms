@@ -8,11 +8,8 @@ async function main() {
   const adminRole = await prisma.role.upsert({
     where: { name: "ADMIN" },
     update: {},
-    create: {
-      name: "ADMIN",
-    },
+    create: { name: "ADMIN" },
   });
-
   console.log({ adminRole });
 
   // Create default admin user
@@ -30,7 +27,6 @@ async function main() {
       },
     });
   }
-
   console.log({ adminUser });
 
   // ── Seed About ──
@@ -46,6 +42,32 @@ async function main() {
     console.log("About seeded.");
   }
 
+  // ── Seed Skills ──
+  const allSkillNames = [
+    "Space Planning",
+    "3D Modeling",
+    "Interior Design",
+    "Technical Drawing",
+    "AutoCAD",
+    "SketchUp",
+    "D5 Render",
+    "Microsoft Office",
+    "Quality Control",
+    "Construction",
+    "RAB Calculation",
+  ];
+
+  const skillMap: Record<string, string> = {};
+  for (const name of allSkillNames) {
+    const skill = await prisma.skill.upsert({
+      where: { name },
+      update: {},
+      create: { name },
+    });
+    skillMap[name] = skill.id;
+  }
+  console.log(`Seeded ${allSkillNames.length} skills.`);
+
   // ── Seed Experiences ──
   const experienceCount = await prisma.experience.count();
   if (experienceCount === 0) {
@@ -57,9 +79,8 @@ async function main() {
         type: "Kontrak",
         startDate: "2026-02",
         endDate: null,
-        periodLabel: "Feb 2026 – Saat ini · 3 bln",
         location: "Jakarta Timur, Jakarta Raya, Indonesia · Di lokasi",
-        skills: ["Space Planning", "3D Modeling", "Interior Design"],
+        skillNames: ["Space Planning", "3D Modeling", "Interior Design"],
         description: [],
         isActive: true,
       },
@@ -70,9 +91,8 @@ async function main() {
         type: "Purnawaktu",
         startDate: "2025-05",
         endDate: "2026-02",
-        periodLabel: "Mei 2025 – Feb 2026 · 10 bln",
         location: "Surabaya, Jawa Timur, Indonesia · Di lokasi",
-        skills: ["Interior Design", "Space Planning", "3D Modeling", "Technical Drawing", "AutoCAD"],
+        skillNames: ["Interior Design", "Space Planning", "3D Modeling", "Technical Drawing", "AutoCAD"],
         description: [],
         isActive: true,
       },
@@ -83,9 +103,8 @@ async function main() {
         type: "Pekerja Lepas",
         startDate: "2025-01",
         endDate: "2026-02",
-        periodLabel: "Jan 2025 – Feb 2026 · 1 thn 2 bln",
         location: "Jarak Jauh",
-        skills: ["3D Modeling", "Technical Drawing", "AutoCAD", "SketchUp", "D5 Render"],
+        skillNames: ["3D Modeling", "Technical Drawing", "AutoCAD", "SketchUp", "D5 Render"],
         description: [
           "Residential: Collaborated with a contractor to produce 2D construction drawings for a house renovation. Responsibilities included on-site measurement of existing conditions and creating detailed technical drawings.",
           "Workplace: Redesigned a meeting room to improve spatial efficiency and comfort — measured the existing space, developed multiple 3D proposals, and provided furniture recommendations tailored to the client's needs.",
@@ -99,9 +118,8 @@ async function main() {
         type: "Magang",
         startDate: "2022-08",
         endDate: "2022-12",
-        periodLabel: "Agu 2022 – Des 2022 · 5 bln",
         location: "Kecamatan Serang, Banten, Indonesia · Di lokasi",
-        skills: ["SketchUp", "Microsoft Office", "Quality Control", "3D Modeling", "AutoCAD"],
+        skillNames: ["SketchUp", "Microsoft Office", "Quality Control", "3D Modeling", "AutoCAD"],
         description: [
           "Performed data input for TKDN calculation on the construction work package of the architectural work section, and checked the materials on the Domestic Production Goods/Services Inventory List.",
           "Performed quality inspections for 64 room units in the Tanjung Lesung workers' apartment project, ensuring compliance with construction standards and project schedules.",
@@ -117,9 +135,8 @@ async function main() {
         type: "Magang",
         startDate: "2022-04",
         endDate: "2022-06",
-        periodLabel: "Apr 2022 – Jun 2022 · 3 bln",
         location: "Surabaya, Jawa Timur, Indonesia · Di lokasi",
-        skills: ["Microsoft Office", "Construction", "RAB Calculation"],
+        skillNames: ["Microsoft Office", "Construction", "RAB Calculation"],
         description: [
           "Monitored the weekly progress of the construction project of a 2-storey residential house in the Puri Galaxy Surabaya housing complex.",
           "Performed RAB calculations on architectural work in the Construction of a 2-floor residential house in Puri Galaxy Surabaya.",
@@ -128,8 +145,15 @@ async function main() {
       },
     ];
 
-    for (const exp of experiences) {
-      await prisma.experience.create({ data: exp });
+    for (const { skillNames, ...expData } of experiences) {
+      await prisma.experience.create({
+        data: {
+          ...expData,
+          skills: {
+            connect: skillNames.map((name) => ({ id: skillMap[name]! })),
+          },
+        },
+      });
     }
     console.log(`Seeded ${experiences.length} experiences.`);
   }

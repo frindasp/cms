@@ -167,6 +167,13 @@ model About {
   createdAt DateTime @default(now())
 }
 
+model Skill {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  createdAt   DateTime     @default(now())
+  experiences Experience[]
+}
+
 model Experience {
   id          String   @id @default(cuid())
   company     String
@@ -174,9 +181,8 @@ model Experience {
   type        String
   startDate   String
   endDate     String?
-  periodLabel String
   location    String
-  skills      Json
+  skills      Skill[]
   description Json
   imageUrl    String?
   imageFileId String?

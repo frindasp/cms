@@ -1,12 +1,10 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import {
-  Card, CardContent,
-} from "@workspace/ui/components/card";
-import { Button } from "@workspace/ui/components/button";
-import { Badge } from "@workspace/ui/components/badge";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import Link from "next/link"
+import { Card, CardContent } from "@workspace/ui/components/card"
+import { Button } from "@workspace/ui/components/button"
+import { Badge } from "@workspace/ui/components/badge"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@workspace/ui/components/alert-dialog";
+} from "@workspace/ui/components/alert-dialog"
 import {
   Briefcase,
   Plus,
@@ -27,66 +25,70 @@ import {
   Calendar,
   MapPin,
   GripVertical,
-} from "lucide-react";
-import { Separator } from "@workspace/ui/components/separator";
+} from "lucide-react"
+import { Separator } from "@workspace/ui/components/separator"
+import { computePeriodLabel } from "@/lib/period-label"
+
+interface Skill {
+  id: string
+  name: string
+}
 
 interface Experience {
-  id: string;
-  company: string;
-  role: string;
-  type: string;
-  periodLabel: string;
-  location: string;
-  skills: string[];
-  description: string[];
-  imageUrl?: string;
-  order: number;
-  isActive: boolean;
+  id: string
+  company: string
+  role: string
+  type: string
+  startDate: string
+  endDate?: string | null
+  location: string
+  skills: Skill[]
+  description: string[]
+  imageUrl?: string
+  order: number
+  isActive: boolean
+}
+
+async function fetchExperiences(): Promise<Experience[]> {
+  const res = await fetch("/api/experiences")
+  if (!res.ok) throw new Error("Failed to fetch experiences")
+  return res.json()
 }
 
 export default function ExperiencesAdminPage() {
-  const [experiences, setExperiences] = useState<Experience[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const queryClient = useQueryClient()
 
-  const fetchExperiences = async () => {
-    setLoading(true);
-    const res = await fetch("/api/experiences");
-    const data = await res.json();
-    setExperiences(data);
-    setLoading(false);
-  };
+  const { data: experiences = [], isLoading } = useQuery<Experience[]>({
+    queryKey: ["experiences"],
+    queryFn: fetchExperiences,
+  })
 
-  useEffect(() => {
-    fetchExperiences();
-  }, []);
+  const { mutate: deleteExperience, variables: deletingId } = useMutation({
+    mutationFn: (id: string) =>
+      fetch(`/api/experiences/${id}`, { method: "DELETE" }).then((r) => r.json()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["experiences"] })
+    },
+  })
 
-  const handleDelete = async (id: string) => {
-    setDeletingId(id);
-    await fetch(`/api/experiences/${id}`, { method: "DELETE" });
-    setExperiences((prev) => prev.filter((e) => e.id !== id));
-    setDeletingId(null);
-  };
+  const { mutate: toggleActive } = useMutation({
+    mutationFn: (exp: Experience) =>
+      fetch(`/api/experiences/${exp.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: !exp.isActive }),
+      }).then((r) => r.json()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["experiences"] })
+    },
+  })
 
-  const toggleActive = async (exp: Experience) => {
-    const res = await fetch(`/api/experiences/${exp.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isActive: !exp.isActive }),
-    });
-    if (res.ok) {
-      setExperiences((prev) =>
-        prev.map((e) => (e.id === exp.id ? { ...e, isActive: !e.isActive } : e))
-      );
-    }
-  };
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
       </div>
-    );
+    )
   }
 
   return (
@@ -123,8 +125,7 @@ export default function ExperiencesAdminPage() {
               <CardContent className="p-4">
                 <div className="flex items-start gap-3">
                   <GripVertical className="w-4 h-4 text-muted-foreground mt-1 shrink-0 cursor-grab" />
-                  
-                  {/* Image preview */}
+
                   {exp.imageUrl && (
                     <img
                       src={exp.imageUrl}
@@ -157,7 +158,7 @@ export default function ExperiencesAdminPage() {
                     <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
-                        {exp.periodLabel}
+                        {computePeriodLabel(exp.startDate, exp.endDate)}
                       </span>
                       <span className="flex items-center gap-1">
                         <MapPin className="w-3 h-3" />
@@ -165,21 +166,23 @@ export default function ExperiencesAdminPage() {
                       </span>
                     </div>
 
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {(exp.skills as string[]).slice(0, 4).map((s) => (
-                        <span
-                          key={s}
-                          className="px-2 py-0.5 rounded-full text-xs border border-border bg-muted text-muted-foreground"
-                        >
-                          {s}
-                        </span>
-                      ))}
-                      {(exp.skills as string[]).length > 4 && (
-                        <span className="text-xs text-muted-foreground">
-                          +{(exp.skills as string[]).length - 4} more
-                        </span>
-                      )}
-                    </div>
+                    {exp.skills.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {exp.skills.slice(0, 5).map((s) => (
+                          <span
+                            key={s.id}
+                            className="px-2 py-0.5 rounded-full text-xs border border-border bg-muted text-muted-foreground"
+                          >
+                            {s.name}
+                          </span>
+                        ))}
+                        {exp.skills.length > 5 && (
+                          <span className="text-xs text-muted-foreground self-center">
+                            +{exp.skills.length - 5} more
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Actions */}
@@ -216,7 +219,7 @@ export default function ExperiencesAdminPage() {
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
                           <AlertDialogAction
-                            onClick={() => handleDelete(exp.id)}
+                            onClick={() => deleteExperience(exp.id)}
                             className="bg-destructive hover:bg-destructive/90"
                           >
                             Delete
@@ -232,5 +235,5 @@ export default function ExperiencesAdminPage() {
         </div>
       )}
     </div>
-  );
+  )
 }
