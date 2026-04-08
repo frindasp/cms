@@ -5,6 +5,8 @@ export const APP_ROUTES = {
   LOGIN: "/login",
   ADMIN: {
     DASHBOARD: "/admin",
+    ABOUT: "/admin/about",
+    EXPERIENCES: "/admin/experiences",
     USERS: "/admin/users",
     ROLES: "/admin/roles",
     MESSAGES: "/admin/messages",
@@ -25,6 +27,9 @@ export const API_ROUTES = {
   ROLES: "/api/roles",
   MESSAGES: "/api/messages",
   CONTACTS: "/api/contacts",
+  ABOUT: "/api/about",
+  EXPERIENCES: "/api/experiences",
+  UPLOAD: "/api/upload",
   RESEND: {
     EMAILS: "/api/resend/emails",
     WEBHOOKS: "/api/resend/webhooks",

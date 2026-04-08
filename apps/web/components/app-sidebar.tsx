@@ -10,6 +10,8 @@ import {
   Send,
   MessageSquare,
   Shield,
+  FileText,
+  Briefcase,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -79,6 +81,19 @@ const items = [
   },
 ];
 
+const portfolioItems = [
+  {
+    title: "About",
+    url: APP_ROUTES.ADMIN.ABOUT,
+    icon: FileText,
+  },
+  {
+    title: "Experiences",
+    url: APP_ROUTES.ADMIN.EXPERIENCES,
+    icon: Briefcase,
+  },
+];
+
 export function AppSidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
@@ -107,6 +122,27 @@ export function AppSidebar() {
                         ? pathname.startsWith("/admin/resend")
                         : pathname === item.url
                     }
+                    tooltip={item.title}
+                  >
+                    <Link href={item.url}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel>Portfolio Content</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {portfolioItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname.startsWith(item.url)}
                     tooltip={item.title}
                   >
                     <Link href={item.url}>

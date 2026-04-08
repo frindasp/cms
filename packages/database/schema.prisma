@@ -157,3 +157,31 @@ model TotpAuthenticator {
 
   @@index([userId])
 }
+
+model About {
+  id        String   @id @default(cuid())
+  content   String   @db.LongText
+  email     String
+  location  String   @default("Jakarta, Indonesia")
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
+
+model Experience {
+  id          String   @id @default(cuid())
+  company     String
+  role        String
+  type        String
+  startDate   String
+  endDate     String?
+  periodLabel String
+  location    String
+  skills      Json
+  description Json
+  imageUrl    String?
+  imageFileId String?
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
