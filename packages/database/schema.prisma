@@ -229,6 +229,7 @@ model PortfolioImage {
   @@index([portfolioId])
 }
 
+
 model Portfolio {
   id           String           @id @default(cuid())
   title        String
@@ -244,4 +245,42 @@ model Portfolio {
 
   @@index([experienceId])
 }
+
+enum DatabaseType {
+  MYSQL
+  TIDB
+  SUPABASE
+  POSTGRESQL
+  COUCHBASE
+  YUGABYTE
+}
+
+model BackupConfig {
+  id           String       @id @default(cuid())
+  name         String
+  databaseType DatabaseType
+  host         String
+  port         Int
+  databaseName String
+  username     String
+  password     String
+  options      Json?        // For extra fields like bucket name, SSL, etc.
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  backups       BackupLog[]
+}
+
+model BackupLog {
+  id             String       @id @default(cuid())
+  backupConfigId String
+  backupConfig   BackupConfig @relation(fields: [backupConfigId], references: [id], onDelete: Cascade)
+  status         String       @default("PENDING") // PENDING, SUCCESS, FAILED
+  fileName       String?
+  fileSize       BigInt?      @default(0)
+  error          String?      @db.Text
+  createdAt      DateTime     @default(now())
+
+  @@index([backupConfigId])
+}
+
 

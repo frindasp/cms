@@ -21,6 +21,12 @@ export const APP_ROUTES = {
     VERIFICATION_TOKENS: "/admin/verification-tokens",
     ACTIVITY: "/admin/activity",
     CHAT: "/admin/chat",
+    BACKUP: {
+      INDEX: "/admin/backup",
+      CREATE: "/admin/backup/create",
+      DETAIL: "/admin/backup/[id]",
+      EDIT: "/admin/backup/[id]/edit",
+    },
   },
 };
 
@@ -41,7 +47,9 @@ export const API_ROUTES = {
   },
   VERIFICATION_TOKENS: "/api/verification-tokens",
   ACTIVITY: "/api/activities",
+  BACKUP: "/api/backup",
 };
+
 
 export const DASHBOARD_STATS = [
   {

@@ -14,6 +14,8 @@ import {
   Briefcase,
   Zap,
   FolderOpen,
+  Database,
+  ChevronDown,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -30,9 +32,18 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
   SidebarGroupContent,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
 } from "@workspace/ui/components/sidebar";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@workspace/ui/components/collapsible";
+import {
   DropdownMenu,
+
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
@@ -162,7 +173,45 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        <SidebarGroup>
+
+          <SidebarGroupLabel>Database Management</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <Collapsible asChild className="group/collapsible" defaultOpen={pathname.startsWith("/admin/backup")}>
+                <SidebarMenuItem>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton tooltip="Back Up data">
+                      <Database className="h-4 w-4" />
+                      <span>Back Up data</span>
+                      <ChevronDown className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-180" />
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      <SidebarMenuSubItem>
+                        <SidebarMenuSubButton asChild isActive={pathname === APP_ROUTES.ADMIN.BACKUP.INDEX}>
+                          <Link href={APP_ROUTES.ADMIN.BACKUP.INDEX}>
+                            <span>List Back Up Data</span>
+                          </Link>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                      <SidebarMenuSubItem>
+                        <SidebarMenuSubButton asChild isActive={pathname === APP_ROUTES.ADMIN.BACKUP.CREATE}>
+                          <Link href={APP_ROUTES.ADMIN.BACKUP.CREATE}>
+                            <span>Add New DB Configuration</span>
+                          </Link>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </SidebarMenuItem>
+              </Collapsible>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
+
       <SidebarFooter className="border-t p-4">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
