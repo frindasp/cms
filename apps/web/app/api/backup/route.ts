@@ -10,16 +10,32 @@ export async function GET(request: Request) {
   }
 
   try {
-    const data = await prisma.backupConfig.findMany({
-      orderBy: { createdAt: "desc" },
-    });
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "10");
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await Promise.all([
+      prisma.backupConfig.findMany({
+        skip,
+        take: limit,
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.backupConfig.count(),
+    ]);
     
     // Serialize BigInt for JSON safety
     const result = JSON.parse(JSON.stringify(data, (key, value) =>
       typeof value === 'bigint' ? value.toString() : value
     ));
 
-    return ApiResponse.success(result);
+    return ApiResponse.success({
+      data: result,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    });
   } catch (error) {
     return ApiResponse.internalError(error);
   }
@@ -60,7 +76,7 @@ export async function POST(request: Request) {
       metadata: { targetId: data.id }
     });
 
-    return ApiResponse.success(result, 201);
+    return ApiResponse.success({ data: result }, 201);
   } catch (error) {
     return ApiResponse.internalError(error);
   }

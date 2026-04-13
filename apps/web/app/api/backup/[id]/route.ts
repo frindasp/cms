@@ -33,7 +33,7 @@ export async function GET(
       typeof value === 'bigint' ? value.toString() : value
     ));
 
-    return ApiResponse.success(result);
+    return ApiResponse.success({ data: result });
   } catch (error) {
     return ApiResponse.internalError(error);
   }
@@ -80,7 +80,7 @@ export async function PATCH(
     });
 
 
-    return ApiResponse.success(result);
+    return ApiResponse.success({ data: result });
   } catch (error) {
     return ApiResponse.internalError(error);
   }

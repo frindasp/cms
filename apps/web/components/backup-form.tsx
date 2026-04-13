@@ -37,7 +37,56 @@ export const databaseTypes = [
   { id: "YUGABYTE", name: "YugabyteDB", icon: Server },
 ] as const;
 
+export const backupPresets = [
+  {
+    name: "Couchbase Cloud Production",
+    databaseType: "COUCHBASE" as const,
+    host: "cb.8okbvrgff1vjbwal.cloud.couchbase.com",
+    port: 8091,
+    databaseName: "default",
+    username: "frindasp",
+    password: "4!eZnVq4+vw!",
+    options: JSON.stringify({
+      configProfile: "wanDevelopment",
+      protocol: "couchbases"
+    }, null, 2),
+  },
+  {
+    name: "YugabyteDB Cloud",
+    databaseType: "YUGABYTE" as const,
+    host: "ap-southeast-3.b0ecb2da-7903-49c0-b31d-2862edf7eb05.aws.yugabyte.cloud",
+    port: 5433,
+    databaseName: "yugabyte",
+    username: "admin",
+    password: "KnKeoNqW-0VXQ0sVc1dTMPBMuBvQJN",
+    options: JSON.stringify({
+      ssl: {
+        rejectUnauthorized: true,
+        ca: "cred/root.crt"
+      }
+    }, null, 2),
+  },
+  {
+    name: "TiDB Cloud Production",
+    databaseType: "TIDB" as const,
+    host: "gateway01.ap-southeast-1.prod.aws.tidbcloud.com",
+    port: 3306,
+    databaseName: "frindasp",
+    username: "2puzcssyZR699bw.root",
+    password: "ghAYdJJAIg3bzcYg",
+    options: JSON.stringify({
+      ssl: {
+        minVersion: "TLSv1.2",
+        rejectUnauthorized: true
+      }
+    }, null, 2),
+  }
+];
+
+
+
 const backupSchema = z.object({
+
   name: z.string().min(2, "Name must be at least 2 characters"),
   databaseType: z.enum(["MYSQL", "TIDB", "SUPABASE", "POSTGRESQL", "COUCHBASE", "YUGABYTE"]),
   host: z.string().min(1, "Host is required"),
@@ -74,7 +123,45 @@ export function BackupForm({ initialData, onSubmit, isLoading }: BackupFormProps
     },
   });
 
+  const [isTesting, setIsTesting] = useState(false);
+
+  const onTestConnection = async () => {
+    setIsTesting(true);
+    const values = form.getValues();
+    try {
+      // Parse options if present
+      let parsedOptions = null;
+      if (values.options) {
+        try {
+          parsedOptions = JSON.parse(values.options);
+        } catch (e) {
+          throw new Error("Invalid JSON in Options field");
+        }
+      }
+
+      const res = await fetch("/api/backup/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...values, options: parsedOptions }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Connection failed");
+
+      toast.success("Connection test successful!", {
+        description: `Successfully connected to ${values.databaseType} server.`,
+      });
+    } catch (err: any) {
+      toast.error("Connection test failed", {
+        description: err.message,
+      });
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
   const selectedType = form.watch("databaseType");
+
 
   // Update default port based on type
   const handleTypeChange = (type: string) => {
@@ -133,7 +220,32 @@ export function BackupForm({ initialData, onSubmit, isLoading }: BackupFormProps
           </Alert>
         )}
 
+        {!initialData && (
+          <div className="space-y-2">
+            <FormLabel>Fill from Template</FormLabel>
+            <div className="flex flex-wrap gap-2">
+              {backupPresets.map((preset) => (
+                <Button
+                  key={preset.name}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    form.reset(preset);
+                    toast.info(`Filled with ${preset.name} template`);
+                  }}
+                >
+                  <DbIcon className="mr-2 h-4 w-4" />
+                  {preset.name}
+                </Button>
+              ))}
+            </div>
+            <FormDescription>Choose a pre-defined template to quickly fill the form.</FormDescription>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
           <Card className="md:col-span-2">
             <CardContent className="pt-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -275,10 +387,22 @@ export function BackupForm({ initialData, onSubmit, isLoading }: BackupFormProps
           />
         </div>
 
-        <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? "Saving..." : initialData ? "Update Configuration" : "Save Configuration"}
-        </Button>
+        <div className="flex gap-4">
+          <Button 
+            type="button" 
+            variant="outline" 
+            className="flex-1" 
+            onClick={onTestConnection}
+            disabled={isTesting || isLoading}
+          >
+            {isTesting ? "Testing..." : "Test Connection"}
+          </Button>
+          <Button type="submit" className="flex-1" disabled={isLoading || isTesting}>
+            {isLoading ? "Saving..." : initialData ? "Update Configuration" : "Save Configuration"}
+          </Button>
+        </div>
       </form>
+
     </Form>
   );
 }

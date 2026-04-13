@@ -157,7 +157,85 @@ async function main() {
     }
     console.log(`Seeded ${experiences.length} experiences.`);
   }
+
+  // ── Seed Backup Configs ──
+  const couchbaseConfig = await prisma.backupConfig.findFirst({
+    where: { name: "Couchbase Cloud Production" },
+  });
+
+  if (!couchbaseConfig) {
+    await prisma.backupConfig.create({
+      data: {
+        name: "Couchbase Cloud Production",
+        databaseType: "COUCHBASE",
+        host: "cb.8okbvrgff1vjbwal.cloud.couchbase.com",
+        port: 8091,
+        databaseName: "default",
+        username: "frindasp",
+        password: "4!eZnVq4+vw!",
+        options: {
+          configProfile: "wanDevelopment",
+          protocol: "couchbases"
+        }
+      }
+    });
+    console.log("Seeded default Couchbase backup config.");
+  }
+
+  const yugabyteConfig = await prisma.backupConfig.findFirst({
+    where: { name: "YugabyteDB Cloud" },
+  });
+
+  if (!yugabyteConfig) {
+    await prisma.backupConfig.create({
+      data: {
+        name: "YugabyteDB Cloud",
+        databaseType: "YUGABYTE",
+        host: "ap-southeast-3.b0ecb2da-7903-49c0-b31d-2862edf7eb05.aws.yugabyte.cloud",
+        port: 5433,
+        databaseName: "yugabyte",
+        username: "admin",
+        password: "KnKeoNqW-0VXQ0sVc1dTMPBMuBvQJN",
+        options: {
+          ssl: {
+            rejectUnauthorized: true,
+            ca: "cred/root.crt"
+          }
+        }
+      }
+    });
+    console.log("Seeded default YugabyteDB backup config.");
+  }
+
+  const tidbConfig = await prisma.backupConfig.findFirst({
+    where: { name: "TiDB Cloud Production" },
+  });
+
+  if (!tidbConfig) {
+    await prisma.backupConfig.create({
+      data: {
+        name: "TiDB Cloud Production",
+        databaseType: "TIDB",
+        host: "gateway01.ap-southeast-1.prod.aws.tidbcloud.com",
+        port: 3306,
+        databaseName: "frindasp",
+        username: "2puzcssyZR699bw.root",
+        password: "ghAYdJJAIg3bzcYg",
+        options: {
+          ssl: {
+            minVersion: "TLSv1.2",
+            rejectUnauthorized: true
+          }
+        }
+      }
+    });
+    console.log("Seeded default TiDB Cloud backup config.");
+  }
 }
+
+
+
+
 
 main()
   .then(async () => {

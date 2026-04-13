@@ -13,8 +13,13 @@ import {
   History,
   CheckCircle2,
   XCircle,
-  Clock
+  Clock,
+  Download,
+  RefreshCw,
+  Trash2
 } from "lucide-react";
+
+
 import { API_ROUTES } from "@/lib/constants";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@workspace/ui/components/card";
 import { Button } from "@workspace/ui/components/button";
@@ -38,20 +43,75 @@ export default function BackupDetailPage() {
 
   const runBackupMutation = useMutation({
     mutationFn: async () => {
-      // Logic for triggering backup would go here
-      // For now, we'll just mock it
-      await new Promise(r => setTimeout(r, 2000));
-      return { success: true };
+      const res = await fetch(`${API_ROUTES.BACKUP}/${id}/execute`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Backup failed");
+      return data;
     },
-    onSuccess: () => {
-      toast.success("Backup process started", {
-        description: "You can monitor the progress in the history tab."
+    onSuccess: (data) => {
+      toast.success("Backup successful", {
+        description: data.message
+      });
+      queryClient.invalidateQueries({ queryKey: ["backup-config", id] });
+    },
+    onError: (error: any) => {
+      toast.error("Backup failed", {
+        description: error.message
       });
       queryClient.invalidateQueries({ queryKey: ["backup-config", id] });
     }
   });
 
+
+  const rollbackMutation = useMutation({
+    mutationFn: async (logId: string) => {
+      const res = await fetch(`${API_ROUTES.BACKUP}/rollback/${logId}`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Rollback failed");
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success("Rollback successful", {
+        description: data.message
+      });
+      queryClient.invalidateQueries({ queryKey: ["backup-config", id] });
+    },
+    onError: (error: any) => {
+      toast.error("Rollback failed", {
+        description: error.message
+      });
+    }
+  });
+
+  const restoreMutation = useMutation({
+
+    mutationFn: async (logId: string) => {
+      const res = await fetch(`${API_ROUTES.BACKUP}/restore/${logId}`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Restore failed");
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success("Restore successful", {
+        description: data.message
+      });
+      queryClient.invalidateQueries({ queryKey: ["backup-config", id] });
+    },
+    onError: (error: any) => {
+      toast.error("Restore failed", {
+        description: error.message
+      });
+    }
+  });
+
   if (isLoading) return <div className="p-8">Loading...</div>;
+
   if (!config) return <div className="p-8">Configuration not found</div>;
 
   return (
@@ -155,13 +215,19 @@ export default function BackupDetailPage() {
                         <Clock className="h-5 w-5 text-blue-500 animate-pulse" />
                       )}
                       <div>
-                        <div className="font-medium">{backup.fileName || "N/A"}</div>
+                        <div className="font-medium">{backup.fileName || (backup.status === "FAILED" ? "Backup Failed" : "N/A")}</div>
                         <div className="text-xs text-muted-foreground">
                           {format(new Date(backup.createdAt), "PPP p")}
                         </div>
+                        {backup.error && (
+                          <div className="text-xs text-destructive mt-1 max-w-md truncate">
+                            Error: {backup.error}
+                          </div>
+                        )}
                       </div>
+
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
                       {backup.fileSize && (
                         <span className="text-sm font-medium">
                           {(Number(backup.fileSize) / 1024 / 1024).toFixed(2)} MB
@@ -170,7 +236,51 @@ export default function BackupDetailPage() {
                       <Badge variant={backup.status === "SUCCESS" ? "default" : "destructive"}>
                         {backup.status}
                       </Badge>
+                      
+                      {backup.status === "SUCCESS" && (
+                        <div className="flex gap-1">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8"
+                            onClick={() => window.open(`${API_ROUTES.BACKUP}/download/${backup.id}`)}
+                            title="Download Backup"
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-orange-500 hover:text-orange-600 hover:bg-orange-50"
+                            onClick={() => {
+                              if (confirm("Are you sure you want to rollback this backup? This will DELETE the backup schema from the database.")) {
+                                rollbackMutation.mutate(backup.id);
+                              }
+                            }}
+                            title="Rollback (Delete Schema)"
+                            disabled={rollbackMutation.isPending}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-blue-500 hover:text-blue-600 hover:bg-blue-50"
+                            onClick={() => {
+                              if (confirm("Are you sure you want to restore this backup? This may overwrite current data.")) {
+                                restoreMutation.mutate(backup.id);
+                              }
+                            }}
+                            title="Restore to Database"
+                            disabled={restoreMutation.isPending}
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                          </Button>
+
+                        </div>
+                      )}
                     </div>
+
                   </div>
                 ))
               )}

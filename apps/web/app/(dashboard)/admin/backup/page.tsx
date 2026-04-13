@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Database, MoreHorizontal, Edit, Trash, ExternalLink } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+
 import { toast } from "sonner";
 
 import { Button } from "@workspace/ui/components/button";
@@ -28,7 +30,9 @@ import {
 } from "@workspace/ui/components/alert-dialog";
 
 export default function BackupListPage() {
+  const router = useRouter();
   const [page, setPage] = useState(1);
+
   const queryClient = useQueryClient();
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
@@ -61,6 +65,38 @@ export default function BackupListPage() {
 
   const columns: ColumnDef<any>[] = [
     {
+      id: "actions",
+      cell: ({ row }) => {
+        const config = row.original;
+        return (
+          <div onClick={(e) => e.stopPropagation()}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 w-8 p-0">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem asChild>
+                  <Link href={APP_ROUTES.ADMIN.BACKUP.EDIT.replace("[id]", config.id)} className="flex items-center">
+                    <Edit className="mr-2 h-4 w-4" />
+                    Edit
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => setDeleteId(config.id)}
+                  className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                >
+                  <Trash className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
+      },
+    },
+    {
       accessorKey: "name",
       header: "Name",
       cell: ({ row }) => (
@@ -82,43 +118,8 @@ export default function BackupListPage() {
       accessorKey: "databaseName",
       header: "Database/Bucket",
     },
-    {
-      id: "actions",
-      cell: ({ row }) => {
-        const config = row.original;
-        return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem asChild>
-                <Link href={APP_ROUTES.ADMIN.BACKUP.DETAIL.replace("[id]", config.id)} className="flex items-center">
-                  <ExternalLink className="mr-2 h-4 w-4" />
-                  View Details
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href={APP_ROUTES.ADMIN.BACKUP.EDIT.replace("[id]", config.id)} className="flex items-center">
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => setDeleteId(config.id)}
-                className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-              >
-                <Trash className="mr-2 h-4 w-4" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        );
-      },
-    },
   ];
+
 
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
@@ -142,7 +143,9 @@ export default function BackupListPage() {
         totalCount={data?.total || 0}
         onPageChange={setPage}
         isLoading={isLoading}
+        onRowClick={(row) => router.push(APP_ROUTES.ADMIN.BACKUP.DETAIL.replace("[id]", row.id))}
       />
+
 
       <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
         <AlertDialogContent>
