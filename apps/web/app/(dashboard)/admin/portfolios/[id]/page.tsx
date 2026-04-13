@@ -103,7 +103,7 @@ export default async function PortfolioDetailPage({
         <CardContent>
           <div className="flex flex-wrap gap-2">
             {portfolio.tags.length > 0 ? (
-              portfolio.tags.map((tag) => (
+              portfolio.tags.map((tag: { id: string; name: string }) => (
                 <Badge key={tag.id} variant="secondary" className="px-3 py-1 font-medium">{tag.name}</Badge>
               ))
             ) : (
@@ -120,7 +120,7 @@ export default async function PortfolioDetailPage({
         <CardContent>
           {portfolio.images.length > 0 ? (
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-              {portfolio.images.map((img) => (
+              {portfolio.images.map((img: { id: string; url: string; isLogo: boolean }) => (
                 <div key={img.id} className="group relative aspect-square rounded-xl overflow-hidden border bg-muted">
                   <img
                     src={img.url}

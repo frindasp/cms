@@ -28,7 +28,7 @@ export default async function EditExperiencePage({
         startDate: exp.startDate,
         endDate: exp.endDate ?? "",
         location: exp.location,
-        skills: exp.skills.map((s) => s.name),
+        skills: exp.skills.map((s: { name: string }) => s.name),
         description: exp.description as string[],
         images: exp.images,
         order: exp.order,
