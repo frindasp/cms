@@ -25,8 +25,8 @@ export async function POST(
   } = await req.json()
 
   try {
-    let finalUrl = url
-    let fileId = null
+    let finalUrl: string | undefined = url
+    let fileId: string | null = null
     let finalSource = source
 
     if (experienceImageId) {
@@ -47,7 +47,7 @@ export async function POST(
         useUniqueFileName: true,
       })
       finalUrl = result.url
-      fileId = result.fileId
+      fileId = result.fileId ?? null
     }
 
     if (!finalUrl) {

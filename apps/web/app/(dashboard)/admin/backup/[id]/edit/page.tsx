@@ -2,7 +2,7 @@
 
 import { useRouter, useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { BackupForm, BackupFormValues } from "@/components/backup-form";
+import { BackupForm, BackupSubmitValues } from "@/components/backup-form";
 import { APP_ROUTES, API_ROUTES } from "@/lib/constants";
 import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@workspace/ui/components/card";
@@ -22,7 +22,7 @@ export default function BackupEditPage() {
     },
   });
 
-  const onSubmit = async (values: BackupFormValues) => {
+  const onSubmit = async (values: BackupSubmitValues) => {
     setIsSubmitting(true);
     try {
       const res = await fetch(`${API_ROUTES.BACKUP}/${id}`, {

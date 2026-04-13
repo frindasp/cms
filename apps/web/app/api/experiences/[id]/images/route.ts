@@ -31,8 +31,8 @@ export async function POST(
   const { prisma } = await import("@workspace/database")
 
   try {
-    let finalUrl = url
-    let fileId = null
+    let finalUrl: string | undefined = url
+    let fileId: string | null = null
 
     if (source === "imagekit" && file) {
       const ik = getIK()
@@ -43,7 +43,7 @@ export async function POST(
         useUniqueFileName: true,
       })
       finalUrl = result.url
-      fileId = result.fileId
+      fileId = result.fileId ?? null
     }
 
     if (!finalUrl) {

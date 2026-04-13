@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { BackupForm, BackupFormValues } from "@/components/backup-form";
+import { BackupForm, BackupSubmitValues } from "@/components/backup-form";
 import { APP_ROUTES, API_ROUTES } from "@/lib/constants";
 import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@workspace/ui/components/card";
@@ -10,7 +10,7 @@ export default function BackupCreatePage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
-  const onSubmit = async (values: BackupFormValues) => {
+  const onSubmit = async (values: BackupSubmitValues) => {
     setIsLoading(true);
     try {
       const res = await fetch(API_ROUTES.BACKUP, {

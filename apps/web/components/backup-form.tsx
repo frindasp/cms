@@ -98,10 +98,11 @@ const backupSchema = z.object({
 });
 
 export type BackupFormValues = z.infer<typeof backupSchema>;
+export type BackupSubmitValues = Omit<BackupFormValues, "options"> & { options?: unknown };
 
 interface BackupFormProps {
   initialData?: any;
-  onSubmit: (values: BackupFormValues) => Promise<void>;
+  onSubmit: (values: BackupSubmitValues) => Promise<void>;
   isLoading?: boolean;
 }
 

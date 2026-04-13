@@ -76,13 +76,13 @@ export async function GET(
         await pgClient.connect();
         const res = await pgClient.query(`
           SELECT 
-            datname as name,
-            pg_database_size(datname) as sizeBytes
+            datname as "name",
+            pg_database_size(datname) as "sizeBytes"
           FROM pg_database 
           WHERE datistemplate = false
           ORDER BY datname ASC
         `);
-        schemaList = res.rows.map(row => ({
+        schemaList = res.rows.map((row: { name: string; sizeBytes: number | string | null }) => ({
           name: row.name,
           tableCount: undefined,
           sizeBytes: Number(row.sizeBytes || 0),
@@ -103,7 +103,7 @@ export async function GET(
         });
         
         const buckets = await cluster.buckets().getAllBuckets();
-        schemaList = buckets.map(b => ({
+        schemaList = buckets.map((b: { name: string; ramQuotaMB: number | string }) => ({
           name: b.name,
           tableCount: undefined,
           sizeBytes: Number(b.ramQuotaMB) * 1024 * 1024, // Using quota as ref
