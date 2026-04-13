@@ -41,6 +41,17 @@ export default function BackupDetailPage() {
     },
   });
 
+  const { data: schemas, isLoading: isLoadingSchemas } = useQuery({
+    queryKey: ["backup-schemas", id],
+    queryFn: async () => {
+      const res = await fetch(`${API_ROUTES.BACKUP}/${id}/schemas`);
+      const json = await res.json();
+      return json.data || [];
+    },
+    enabled: !!config,
+  });
+
+
   const runBackupMutation = useMutation({
     mutationFn: async () => {
       const res = await fetch(`${API_ROUTES.BACKUP}/${id}/execute`, {
@@ -194,35 +205,41 @@ export default function BackupDetailPage() {
                 <CardTitle>Recent Backups</CardTitle>
                 <CardDescription>History of the last 10 backup attempts.</CardDescription>
               </div>
-              <History className="h-4 w-4 text-muted-foreground" />
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => queryClient.invalidateQueries({ queryKey: ["backup-config", id] })}
+              >
+                <RefreshCw className="h-4 w-4" />
+              </Button>
             </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {config.backups?.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  No backup history found.
+              {config.logs?.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground border rounded-lg border-dashed">
+                  No backups recorded yet.
                 </div>
               ) : (
-                config.backups?.map((backup: any) => (
-                  <div key={backup.id} className="flex items-center justify-between p-2 border rounded-lg">
-                    <div className="flex items-center gap-3">
+                config.logs.map((backup: any) => (
+                  <div key={backup.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/30 transition-colors">
+                    <div className="flex items-center gap-4">
                       {backup.status === "SUCCESS" ? (
                         <CheckCircle2 className="h-5 w-5 text-emerald-500" />
                       ) : backup.status === "FAILED" ? (
                         <XCircle className="h-5 w-5 text-destructive" />
                       ) : (
-                        <Clock className="h-5 w-5 text-blue-500 animate-pulse" />
+                        <Clock className="h-5 w-5 text-muted-foreground animate-pulse" />
                       )}
                       <div>
-                        <div className="font-medium">{backup.fileName || (backup.status === "FAILED" ? "Backup Failed" : "N/A")}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {format(new Date(backup.createdAt), "PPP p")}
-                        </div>
+                        <p className="font-medium">{backup.fileName || `backup_${backup.id.slice(0, 8)}`}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(backup.createdAt).toLocaleString()}
+                        </p>
                         {backup.error && (
-                          <div className="text-xs text-destructive mt-1 max-w-md truncate">
+                          <p className="text-xs text-destructive mt-1 font-medium italic">
                             Error: {backup.error}
-                          </div>
+                          </p>
                         )}
                       </div>
 
@@ -284,6 +301,48 @@ export default function BackupDetailPage() {
                   </div>
                 ))
               )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="col-span-7">
+          <CardHeader>
+            <CardTitle>All {config.databaseType === 'COUCHBASE' ? 'Buckets' : 'Databases'}</CardTitle>
+            <CardDescription>Advanced details for each found schema on the server.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md border overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 border-b">
+                  <tr>
+                    <th className="px-4 py-2 text-left font-medium">Name</th>
+                    <th className="px-4 py-2 text-right font-medium">Tables</th>
+                    <th className="px-4 py-2 text-right font-medium">Size</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {isLoadingSchemas ? (
+                    <tr><td colSpan={3} className="px-4 py-8 text-center text-muted-foreground italic">Fetching data...</td></tr>
+                  ) : schemas?.length > 0 ? (
+                    schemas.map((s: any) => (
+                      <tr key={s.name} className={s.name === config.databaseName ? "bg-emerald-500/10 font-medium" : ""}>
+                        <td className="px-4 py-2 flex items-center gap-2">
+                          {s.name}
+                          {s.name === config.databaseName && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
+                        </td>
+                        <td className="px-4 py-2 text-right text-muted-foreground">
+                          {s.tableCount !== undefined ? s.tableCount : '-'}
+                        </td>
+                        <td className="px-4 py-2 text-right text-muted-foreground">
+                          {(s.sizeBytes / 1024 / 1024).toFixed(2)} MB
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr><td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">No schemas found.</td></tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </CardContent>
         </Card>
