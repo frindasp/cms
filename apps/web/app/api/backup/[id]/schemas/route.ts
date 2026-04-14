@@ -117,7 +117,8 @@ export async function GET(
         let mUri = config.host;
         if (!mUri.startsWith("mongodb")) {
           const authPrefix = config.username && config.password ? `${encodeURIComponent(config.username)}:${encodeURIComponent(config.password)}@` : "";
-          mUri = `mongodb://${authPrefix}${config.host}:${config.port}`;
+          const portSuffix = (config.host.includes(":") || config.host.includes(",")) ? "" : `:${config.port}`;
+          mUri = `mongodb://${authPrefix}${config.host}${portSuffix}`;
         } else if (!mUri.includes("@") && config.username && config.password) {
           const credentials = `${encodeURIComponent(config.username)}:${encodeURIComponent(config.password)}@`;
           if (mUri.startsWith("mongodb+srv://")) {

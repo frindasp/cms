@@ -122,7 +122,8 @@ export async function POST(
         let mongoUri = config.host;
         if (!mongoUri.startsWith("mongodb")) {
           const authPrefix = config.username && config.password ? `${encodeURIComponent(config.username)}:${encodeURIComponent(config.password)}@` : "";
-          mongoUri = `mongodb://${authPrefix}${config.host}${config.port ? `:${config.port}` : ""}`;
+          const portSuffix = (config.host.includes(":") || config.host.includes(",")) ? "" : `:${config.port}`;
+          mongoUri = `mongodb://${authPrefix}${config.host}${portSuffix}`;
         } else if (!mongoUri.includes("@") && config.username && config.password) {
           const credentials = `${encodeURIComponent(config.username)}:${encodeURIComponent(config.password)}@`;
           if (mongoUri.startsWith("mongodb+srv://")) {

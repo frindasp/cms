@@ -85,14 +85,13 @@ export const backupPresets = [
   {
     name: "MongoDB Atlas",
     databaseType: "MONGODB" as const,
-    host: "mongodb+srv://frindasp_db_user:Fm9lo6cXLX38V9HK@frindasp.zjtcpif.mongodb.net",
+    host: "ac-kdwlelp-shard-00-00.zjtcpif.mongodb.net:27017,ac-kdwlelp-shard-00-01.zjtcpif.mongodb.net:27017,ac-kdwlelp-shard-00-02.zjtcpif.mongodb.net:27017/?ssl=true&replicaSet=atlas-3gfccp-shard-0&authSource=admin",
     port: 27017,
     databaseName: "frindasp",
     username: "frindasp_db_user",
     password: "Fm9lo6cXLX38V9HK",
     options: JSON.stringify({
       appName: "frindasp",
-      useSrv: true
     }, null, 2),
   }
 ];

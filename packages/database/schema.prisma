@@ -260,11 +260,11 @@ model BackupConfig {
   id           String       @id @default(cuid())
   name         String
   databaseType DatabaseType
-  host         String
+  host         String       @db.Text
   port         Int
   databaseName String
-  username     String
-  password     String
+  username     String       @db.Text
+  password     String       @db.Text
   options      Json?        // For extra fields like bucket name, SSL, etc.
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt

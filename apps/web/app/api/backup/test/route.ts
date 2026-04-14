@@ -99,19 +99,18 @@ export async function POST(request: Request) {
       case "MONGODB":
         try {
           const { MongoClient, ServerApiVersion } = await import('mongodb');
-          // If the host already contains a scheme, use it as the full connection string
-          // Otherwise, construct one based on username and password
           let uri = host;
-          if (!host.startsWith("mongodb")) {
+          if (!uri.startsWith("mongodb")) {
             const authPrefix = username && password ? `${encodeURIComponent(username)}:${encodeURIComponent(password)}@` : "";
-            uri = `mongodb://${authPrefix}${host}${port ? `:${port}` : ""}`;
-          } else if (!host.includes("@") && username && password) {
-              const credentials = `${encodeURIComponent(username)}:${encodeURIComponent(password)}@`;
-              if (host.startsWith("mongodb+srv://")) {
-                uri = host.replace("mongodb+srv://", `mongodb+srv://${credentials}`);
-              } else {
-                uri = host.replace("mongodb://", `mongodb://${credentials}`);
-              }
+            const portSuffix = (host.includes(":") || host.includes(",")) ? "" : `:${port}`;
+            uri = `mongodb://${authPrefix}${host}${portSuffix}`;
+          } else if (!uri.includes("@") && username && password) {
+            const credentials = `${encodeURIComponent(username)}:${encodeURIComponent(password)}@`;
+            if (uri.startsWith("mongodb+srv://")) {
+              uri = uri.replace("mongodb+srv://", `mongodb+srv://${credentials}`);
+            } else {
+              uri = uri.replace("mongodb://", `mongodb://${credentials}`);
+            }
           }
 
           const client = new MongoClient(uri, {
