@@ -95,6 +95,42 @@ export async function POST(request: Request) {
           throw new Error(`Couchbase Error: ${err.message}`);
         }
         break;
+      
+      case "MONGODB":
+        try {
+          const { MongoClient, ServerApiVersion } = await import('mongodb');
+          // If the host already contains a scheme, use it as the full connection string
+          // Otherwise, construct one based on username and password
+          let uri = host;
+          if (!host.startsWith("mongodb")) {
+            const authPrefix = username && password ? `${encodeURIComponent(username)}:${encodeURIComponent(password)}@` : "";
+            uri = `mongodb://${authPrefix}${host}${port ? `:${port}` : ""}`;
+          } else if (!host.includes("@") && username && password) {
+              const credentials = `${encodeURIComponent(username)}:${encodeURIComponent(password)}@`;
+              if (host.startsWith("mongodb+srv://")) {
+                uri = host.replace("mongodb+srv://", `mongodb+srv://${credentials}`);
+              } else {
+                uri = host.replace("mongodb://", `mongodb://${credentials}`);
+              }
+          }
+
+          const client = new MongoClient(uri, {
+            ...((options as any) || {}),
+            serverApi: {
+              version: ServerApiVersion.v1,
+              strict: true,
+              deprecationErrors: true,
+            },
+            connectTimeoutMS: 10000,
+          });
+
+          await client.connect();
+          await client.db("admin").command({ ping: 1 });
+          await client.close();
+        } catch (err: any) {
+          throw new Error(`MongoDB Error: ${err.message}`);
+        }
+        break;
 
       default:
         return ApiResponse.error(`Test connection for ${databaseType} is not implemented yet.`, 400);

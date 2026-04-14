@@ -24,7 +24,7 @@ import {
 } from "@workspace/ui/components/select";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@workspace/ui/components/alert";
-import { AlertCircle, CheckCircle2, Server, Database as DbIcon, ShieldCheck } from "lucide-react";
+import { AlertCircle, CheckCircle2, Server, Database as DbIcon, ShieldCheck, Leaf } from "lucide-react";
 import { useState } from "react";
 import { Card, CardContent } from "@workspace/ui/components/card";
 
@@ -35,6 +35,7 @@ export const databaseTypes = [
   { id: "POSTGRESQL", name: "PostgreSQL", icon: Server },
   { id: "COUCHBASE", name: "Couchbase", icon: DbIcon },
   { id: "YUGABYTE", name: "YugabyteDB", icon: Server },
+  { id: "MONGODB", name: "MongoDB", icon: Leaf },
 ] as const;
 
 export const backupPresets = [
@@ -80,6 +81,19 @@ export const backupPresets = [
         rejectUnauthorized: true
       }
     }, null, 2),
+  },
+  {
+    name: "MongoDB Atlas",
+    databaseType: "MONGODB" as const,
+    host: "mongodb+srv://frindasp_db_user:Fm9lo6cXLX38V9HK@frindasp.zjtcpif.mongodb.net",
+    port: 27017,
+    databaseName: "frindasp",
+    username: "frindasp_db_user",
+    password: "Fm9lo6cXLX38V9HK",
+    options: JSON.stringify({
+      appName: "frindasp",
+      useSrv: true
+    }, null, 2),
   }
 ];
 
@@ -88,7 +102,7 @@ export const backupPresets = [
 const backupSchema = z.object({
 
   name: z.string().min(2, "Name must be at least 2 characters"),
-  databaseType: z.enum(["MYSQL", "TIDB", "SUPABASE", "POSTGRESQL", "COUCHBASE", "YUGABYTE"]),
+  databaseType: z.enum(["MYSQL", "TIDB", "SUPABASE", "POSTGRESQL", "COUCHBASE", "YUGABYTE", "MONGODB"]),
   host: z.string().min(1, "Host is required"),
   port: z.coerce.number().int().positive("Port must be a positive integer"),
   databaseName: z.string().min(1, "Database name is required"),
@@ -170,6 +184,7 @@ export function BackupForm({ initialData, onSubmit, isLoading }: BackupFormProps
     if (type === "MYSQL" || type === "TIDB") form.setValue("port", 3306);
     if (type === "POSTGRESQL" || type === "SUPABASE" || type === "YUGABYTE") form.setValue("port", 5432);
     if (type === "COUCHBASE") form.setValue("port", 8091);
+    if (type === "MONGODB") form.setValue("port", 27017);
   };
 
   return (
@@ -273,7 +288,7 @@ export function BackupForm({ initialData, onSubmit, isLoading }: BackupFormProps
                       <FormLabel>Database Type</FormLabel>
                       <Select 
                         onValueChange={(val) => handleTypeChange(val)} 
-                        defaultValue={field.value}
+                        value={field.value}
                       >
                         <FormControl>
                           <SelectTrigger>

@@ -146,6 +146,38 @@ export async function POST(
         await cluster.close();
         break;
 
+      case "MONGODB":
+        const { MongoClient, ServerApiVersion } = await import('mongodb');
+        let mongoUri = config.host;
+        if (!mongoUri.startsWith("mongodb")) {
+          const authPrefix = config.username && config.password ? `${encodeURIComponent(config.username)}:${encodeURIComponent(config.password)}@` : "";
+          mongoUri = `mongodb://${authPrefix}${config.host}:${config.port}`;
+        } else if (!mongoUri.includes("@") && config.username && config.password) {
+          const credentials = `${encodeURIComponent(config.username)}:${encodeURIComponent(config.password)}@`;
+          if (mongoUri.startsWith("mongodb+srv://")) {
+            mongoUri = mongoUri.replace("mongodb+srv://", `mongodb+srv://${credentials}`);
+          } else {
+            mongoUri = mongoUri.replace("mongodb://", `mongodb://${credentials}`);
+          }
+        }
+
+        const mongoClient = new MongoClient(mongoUri, {
+          ...((config.options as any) || {}),
+          serverApi: {
+            version: ServerApiVersion.v1,
+            strict: true,
+            deprecationErrors: true,
+          }
+        });
+
+        await mongoClient.connect();
+        const db = mongoClient.db(config.databaseName);
+        const collections = await db.listCollections().toArray();
+        success = true;
+        backupDetail = `MongoDB connection verified. Found ${collections.length} collections in database: ${config.databaseName}`;
+        await mongoClient.close();
+        break;
+
       default:
         throw new Error("Backup logic not implemented for this database type");
     }

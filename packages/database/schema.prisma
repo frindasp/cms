@@ -253,6 +253,7 @@ enum DatabaseType {
   POSTGRESQL
   COUCHBASE
   YUGABYTE
+  MONGODB
 }
 
 model BackupConfig {

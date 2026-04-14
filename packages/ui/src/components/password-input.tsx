@@ -8,7 +8,7 @@ import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 
 const PasswordInput = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
-  ({ className, ...props }, ref) => {
+  ({ className, type, ...props }, ref) => {
     const [showPassword, setShowPassword] = React.useState(false)
 
     return (
@@ -22,8 +22,8 @@ const PasswordInput = React.forwardRef<HTMLInputElement, React.ComponentProps<"i
         <Button
           type="button"
           variant="ghost"
-          size="sm"
-          className="absolute right-0 top-0 h-full px-3 py-1 hover:bg-transparent"
+          size="icon"
+          className="absolute right-0 top-0 h-full w-10 hover:bg-transparent"
           onClick={() => setShowPassword((prev) => !prev)}
           disabled={props.disabled}
         >

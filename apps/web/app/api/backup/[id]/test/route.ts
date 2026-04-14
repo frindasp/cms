@@ -117,6 +117,37 @@ export async function POST(
         await cluster.close();
         break;
 
+      case "MONGODB":
+        const { MongoClient, ServerApiVersion } = await import('mongodb');
+        let mongoUri = config.host;
+        if (!mongoUri.startsWith("mongodb")) {
+          const authPrefix = config.username && config.password ? `${encodeURIComponent(config.username)}:${encodeURIComponent(config.password)}@` : "";
+          mongoUri = `mongodb://${authPrefix}${config.host}${config.port ? `:${config.port}` : ""}`;
+        } else if (!mongoUri.includes("@") && config.username && config.password) {
+          const credentials = `${encodeURIComponent(config.username)}:${encodeURIComponent(config.password)}@`;
+          if (mongoUri.startsWith("mongodb+srv://")) {
+            mongoUri = mongoUri.replace("mongodb+srv://", `mongodb+srv://${credentials}`);
+          } else {
+            mongoUri = mongoUri.replace("mongodb://", `mongodb://${credentials}`);
+          }
+        }
+
+        const mongoClient = new MongoClient(mongoUri, {
+          ...((config.options as any) || {}),
+          serverApi: {
+            version: ServerApiVersion.v1,
+            strict: true,
+            deprecationErrors: true,
+          },
+          connectTimeoutMS: 10000,
+        });
+
+        await mongoClient.connect();
+        await mongoClient.db("admin").command({ ping: 1 });
+        message = "Successfully connected to MongoDB Atlas.";
+        await mongoClient.close();
+        break;
+
       default:
         return ApiResponse.error(`Connection testing not implemented for ${config.databaseType}`, 400);
     }

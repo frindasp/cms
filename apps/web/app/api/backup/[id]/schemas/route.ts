@@ -111,6 +111,40 @@ export async function GET(
         }));
         await cluster.close();
         break;
+
+      case "MONGODB":
+        const { MongoClient, ServerApiVersion } = await import('mongodb');
+        let mUri = config.host;
+        if (!mUri.startsWith("mongodb")) {
+          const authPrefix = config.username && config.password ? `${encodeURIComponent(config.username)}:${encodeURIComponent(config.password)}@` : "";
+          mUri = `mongodb://${authPrefix}${config.host}:${config.port}`;
+        } else if (!mUri.includes("@") && config.username && config.password) {
+          const credentials = `${encodeURIComponent(config.username)}:${encodeURIComponent(config.password)}@`;
+          if (mUri.startsWith("mongodb+srv://")) {
+            mUri = mUri.replace("mongodb+srv://", `mongodb+srv://${credentials}`);
+          } else {
+            mUri = mUri.replace("mongodb://", `mongodb://${credentials}`);
+          }
+        }
+
+        const mClient = new MongoClient(mUri, {
+          ...((config.options as any) || {}),
+          serverApi: {
+            version: ServerApiVersion.v1,
+            strict: true,
+            deprecationErrors: true,
+          }
+        });
+
+        await mClient.connect();
+        const dbs = await mClient.db().admin().listDatabases();
+        schemaList = dbs.databases.map((db: any) => ({
+          name: db.name,
+          tableCount: undefined, // MongoDB collections count is extra call per DB, skipping for now
+          sizeBytes: db.sizeOnDisk,
+        }));
+        await mClient.close();
+        break;
     }
 
     return ApiResponse.success({ data: schemaList });

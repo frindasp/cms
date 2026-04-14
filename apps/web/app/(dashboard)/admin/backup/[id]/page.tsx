@@ -33,6 +33,7 @@ import { API_ROUTES } from "@/lib/constants";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@workspace/ui/components/card";
 import { Button } from "@workspace/ui/components/button";
 import { Badge } from "@workspace/ui/components/badge";
+import { PasswordInput } from "@workspace/ui/components/password-input";
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -319,6 +320,7 @@ export default function BackupDetailPage() {
                   <option value="SUPABASE">Supabase</option>
                   <option value="YUGABYTE">YugaByte</option>
                   <option value="COUCHBASE">Couchbase</option>
+                  <option value="MONGODB">MongoDB</option>
                 </select>
                 <div className="flex justify-end gap-1">
                   <Button size="icon" variant="ghost" onClick={() => setEditingSection(null)} className="h-7 w-7"><X className="h-3 w-3" /></Button>
@@ -431,8 +433,7 @@ export default function BackupDetailPage() {
                     <Lock className="h-4 w-4 text-muted-foreground" />
                     <span className="text-xs font-medium">Password:</span>
                   </div>
-                  <input 
-                    type="password"
+                  <PasswordInput 
                     className="w-full bg-background border rounded px-2 py-1 text-sm h-9"
                     value={editValues.password}
                     onChange={(e) => setEditValues({ ...editValues, password: e.target.value })}
