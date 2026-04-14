@@ -23,9 +23,6 @@
     "turbo": "^2.8.17",
     "typescript": "5.9.3"
   },
-  "engines": {
-    "node": "22.x"
-  },
   "workspaces": [
     "apps/*",
     "packages/*"

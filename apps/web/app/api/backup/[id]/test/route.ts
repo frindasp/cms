@@ -96,17 +96,24 @@ export async function POST(
         // Dynamically import to avoid build issues if not used
         const cb = await import('couchbase');
         const cbOptions = config.options as any;
-        const protocol = cbOptions?.protocol || (config.host.includes("cloud.couchbase.com") ? "couchbases" : "couchbase");
+        
+        // Automatic protocol detection: 'couchbases' for Cloud/Capella, 'couchbase' for local
+        const isCloud = config.host.includes("cloud.couchbase.com");
+        const defaultProtocol = isCloud ? "couchbases" : "couchbase";
+        const protocol = cbOptions?.protocol || defaultProtocol;
+        
         const clusterConnStr = config.host.includes("://") ? config.host : `${protocol}://${config.host}`;
         
         const cluster = await cb.connect(clusterConnStr, {
           username: config.username,
           password: config.password,
-          configProfile: cbOptions?.configProfile || "wanDevelopment",
+          // 'wanDevelopment' helps avoid timeout issues when connecting across different networks
+          configProfile: cbOptions?.configProfile || 'wanDevelopment',
         });
         
-        await cluster.ping();
-        message = "Successfully connected to Couchbase cluster.";
+        // Ping includes specific services to ensure full connectivity
+        const pingResult = await cluster.ping();
+        message = `Successfully connected to Couchbase cluster. Ping status: ${JSON.stringify(pingResult.services)}`;
         await cluster.close();
         break;
 

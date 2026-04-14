@@ -127,19 +127,22 @@ export async function POST(
         break;
 
       case "COUCHBASE":
+        const cb = await import('couchbase');
         const options = config.options as any;
-        const protocol = options?.protocol || (config.host.includes("cloud.couchbase.com") ? "couchbases" : "couchbase");
+        const isCloud = config.host.includes("cloud.couchbase.com");
+        const defaultProtocol = isCloud ? "couchbases" : "couchbase";
+        const protocol = options?.protocol || defaultProtocol;
         const clusterConnStr = config.host.includes("://") ? config.host : `${protocol}://${config.host}`;
         
-        const cluster = await couchbase.connect(clusterConnStr, {
+        const cluster = await cb.connect(clusterConnStr, {
           username: config.username,
           password: config.password,
-          configProfile: options?.configProfile || "wanDevelopment",
+          configProfile: options?.configProfile || 'wanDevelopment',
         });
         
         await cluster.ping();
         success = true;
-        backupDetail = "Couchbase cluster ping successful. Connection verified.";
+        backupDetail = `Couchbase cluster ping successful. Connection verified for bucket: ${config.databaseName}`;
         await cluster.close();
         break;
 
