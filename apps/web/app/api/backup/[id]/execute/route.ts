@@ -134,7 +134,6 @@ export async function POST(
         const protocol = options?.protocol || defaultProtocol;
         const clusterConnStr = config.host.includes("://") ? config.host : `${protocol}://${config.host}`;
         
-        const cb = await import('couchbase');
         const cluster = await cb.connect(clusterConnStr, {
           username: config.username,
           password: config.password,
