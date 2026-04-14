@@ -1,4 +1,9 @@
 {
+  "functions": {
+    "app/api/**/*": {
+      "includeFiles": "node_modules/couchbase/**"
+    }
+  },
   "crons": [
     {
       "path": "/api/cron/revalidate",

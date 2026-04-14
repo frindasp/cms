@@ -79,6 +79,16 @@ export default function BackupDetailPage() {
 
   const runBackupMutation = useMutation({
     mutationFn: async () => {
+      // 1. First test connection
+      const testRes = await fetch(`${API_ROUTES.BACKUP}/${id}/test`, {
+        method: "POST",
+      });
+      const testData = await testRes.json();
+      if (!testRes.ok) {
+        throw new Error(`Connection test failed: ${testData.error || "Unknown error"}`);
+      }
+
+      // 2. If connection OK, proceed with backup
       const res = await fetch(`${API_ROUTES.BACKUP}/${id}/execute`, {
         method: "POST",
       });
@@ -99,6 +109,7 @@ export default function BackupDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["backup-config", id] });
     }
   });
+
 
 
   const rollbackMutation = useMutation({
@@ -260,24 +271,24 @@ export default function BackupDetailPage() {
   if (!config) return <div className="p-8">Configuration not found</div>;
 
   return (
-    <div className="flex-1 space-y-4 p-8 pt-6">
-      <div className="flex items-center justify-between">
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">{config.name}</h2>
-          <p className="text-muted-foreground">Manage and monitor backups for this database.</p>
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">{config.name}</h2>
+          <p className="text-sm text-muted-foreground whitespace-normal">Manage and monitor backups for this database.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => testConnectionMutation.mutate()} disabled={testConnectionMutation.isPending}>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => testConnectionMutation.mutate()} disabled={testConnectionMutation.isPending} className="flex-1 md:flex-none">
             <Activity className={`mr-2 h-4 w-4 ${testConnectionMutation.isPending ? "animate-spin" : ""}`} />
-            {testConnectionMutation.isPending ? "Testing..." : "Test Connection"}
+            <span className="truncate">{testConnectionMutation.isPending ? "Testing..." : "Test Connection"}</span>
           </Button>
-          <Button variant="outline" asChild>
+          <Button variant="outline" size="sm" asChild className="flex-1 md:flex-none">
             <Link href={`/admin/backup/${id}/tables`}>
               <TableIcon className="mr-2 h-4 w-4" />
-              Explore Tables
+              <span className="truncate">Explore Tables</span>
             </Link>
           </Button>
-          <Button onClick={() => runBackupMutation.mutate()} disabled={runBackupMutation.isPending}>
+          <Button size="sm" onClick={() => runBackupMutation.mutate()} disabled={runBackupMutation.isPending} className="w-full md:w-auto">
             <Play className="mr-2 h-4 w-4" />
             {runBackupMutation.isPending ? "Running..." : "Run Backup Now"}
           </Button>
@@ -386,10 +397,10 @@ export default function BackupDetailPage() {
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-7">
         <Card 
           onDoubleClick={() => startEditing('connection')}
-          className={`col-span-3 cursor-pointer transition-all ${editingSection === 'connection' ? 'ring-2 ring-primary' : 'hover:border-primary/50'}`}
+          className={`col-span-1 lg:col-span-3 cursor-pointer transition-all ${editingSection === 'connection' ? 'ring-2 ring-primary' : 'hover:border-primary/50'}`}
           title="Double click to edit"
         >
           <CardHeader className="flex flex-row items-center justify-between">
@@ -467,7 +478,7 @@ export default function BackupDetailPage() {
           </CardContent>
         </Card>
 
-        <Card className="col-span-4">
+        <Card className="col-span-1 lg:col-span-4">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -491,53 +502,56 @@ export default function BackupDetailPage() {
                 </div>
               ) : (
                 config.backups.map((backup: any) => (
-                  <div key={backup.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/30 transition-colors">
-                    <div className="flex items-center gap-4">
-                      {backup.status === "SUCCESS" ? (
-                        <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                      ) : backup.status === "FAILED" ? (
-                        <XCircle className="h-5 w-5 text-destructive" />
-                      ) : (
-                        <Clock className="h-5 w-5 text-muted-foreground animate-pulse" />
-                      )}
-                      <div>
-                        <p className="font-medium">{backup.fileName || `backup_${backup.id.slice(0, 8)}`}</p>
+                  <div key={backup.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border rounded-lg hover:bg-muted/30 transition-colors gap-4">
+                    <div className="flex items-start gap-4">
+                      <div className="mt-1">
+                        {backup.status === "SUCCESS" ? (
+                          <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                        ) : backup.status === "FAILED" ? (
+                          <XCircle className="h-5 w-5 text-destructive" />
+                        ) : (
+                          <Clock className="h-5 w-5 text-muted-foreground animate-pulse" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium truncate">{backup.fileName || `backup_${backup.id.slice(0, 8)}`}</p>
                         <p className="text-sm text-muted-foreground">
                           {new Date(backup.createdAt).toLocaleString()}
                         </p>
                         {backup.error && (
-                          <p className="text-xs text-destructive mt-1 font-medium italic">
+                          <p className="text-xs text-destructive mt-1 font-medium italic line-clamp-2">
                             Error: {backup.error}
                           </p>
                         )}
                       </div>
-
                     </div>
-                    <div className="flex items-center gap-2">
-                      {backup.fileSize && (
-                        <span className="text-sm font-medium">
-                          {(Number(backup.fileSize) / 1024 / 1024).toFixed(2)} MB
-                        </span>
-                      )}
-                      <Badge variant={backup.status === "SUCCESS" ? "default" : "destructive"}>
-                        {backup.status}
-                      </Badge>
+                    <div className="flex items-center justify-between sm:justify-end gap-3 border-t sm:border-0 pt-3 sm:pt-0">
+                      <div className="flex items-center gap-2">
+                        {backup.fileSize && (
+                          <span className="text-xs font-medium text-muted-foreground">
+                            {(Number(backup.fileSize) / 1024 / 1024).toFixed(2)} MB
+                          </span>
+                        )}
+                        <Badge variant={backup.status === "SUCCESS" ? "default" : "destructive"} className="text-[10px] px-1.5 py-0 h-5">
+                          {backup.status}
+                        </Badge>
+                      </div>
                       
                       {backup.status === "SUCCESS" && (
                         <div className="flex gap-1">
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="h-8 w-8"
+                            className="h-7 w-7"
                             onClick={() => window.open(`${API_ROUTES.BACKUP}/download/${backup.id}`)}
                             title="Download Backup"
                           >
-                            <Download className="h-4 w-4" />
+                            <Download className="h-3.5 w-3.5" />
                           </Button>
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="h-8 w-8 text-orange-500 hover:text-orange-600 hover:bg-orange-50"
+                            className="h-7 w-7 text-orange-500 hover:text-orange-600 hover:bg-orange-50"
                             onClick={() => {
                               if (confirm("Are you sure you want to rollback this backup? This will DELETE the backup schema from the database.")) {
                                 rollbackMutation.mutate(backup.id);
@@ -546,12 +560,12 @@ export default function BackupDetailPage() {
                             title="Rollback (Delete Schema)"
                             disabled={rollbackMutation.isPending}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="h-8 w-8 text-blue-500 hover:text-blue-600 hover:bg-blue-50"
+                            className="h-7 w-7 text-blue-500 hover:text-blue-600 hover:bg-blue-50"
                             onClick={() => {
                               if (confirm("Are you sure you want to restore this backup? This may overwrite current data.")) {
                                 restoreMutation.mutate(backup.id);
@@ -560,13 +574,11 @@ export default function BackupDetailPage() {
                             title="Restore to Database"
                             disabled={restoreMutation.isPending}
                           >
-                            <RefreshCw className="h-4 w-4" />
+                            <RefreshCw className="h-3.5 w-3.5" />
                           </Button>
-
                         </div>
                       )}
                     </div>
-
                   </div>
                 ))
               )}
@@ -574,14 +586,14 @@ export default function BackupDetailPage() {
           </CardContent>
         </Card>
 
-        <Card className="col-span-7">
+        <Card className="col-span-1 lg:col-span-7">
           <CardHeader>
             <CardTitle>All {config.databaseType === 'COUCHBASE' ? 'Buckets' : 'Databases'}</CardTitle>
             <CardDescription>Advanced details for each found schema on the server.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border overflow-hidden">
-              <table className="w-full text-sm">
+            <div className="rounded-md border overflow-x-auto scrollbar-hide">
+              <table className="w-full text-sm min-w-[600px]">
                 <thead className="bg-muted/50 border-b">
                   <tr>
                     <th className="px-4 py-2 text-left font-medium">Name</th>
@@ -600,14 +612,14 @@ export default function BackupDetailPage() {
                         className={`group cursor-pointer hover:bg-muted/50 transition-colors ${s.name === config.databaseName ? "bg-emerald-500/10 font-medium" : ""}`}
                         onClick={() => switchSchemaMutation.mutate(s.name)}
                       >
-                        <td className="px-4 py-2 flex items-center gap-2">
-                          {s.name}
-                          {s.name === config.databaseName && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
+                        <td className="px-4 py-2 flex items-center gap-2 truncate">
+                          <span className="truncate max-w-[150px] md:max-w-none">{s.name}</span>
+                          {s.name === config.databaseName && <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />}
                         </td>
                         <td className="px-4 py-2 text-right text-muted-foreground">
                           {s.tableCount !== undefined ? s.tableCount : '-'}
                         </td>
-                        <td className="px-4 py-2 text-right text-muted-foreground">
+                        <td className="px-4 py-2 text-right text-muted-foreground whitespace-nowrap">
                           {(s.sizeBytes / 1024 / 1024).toFixed(2)} MB
                         </td>
                         <td className="px-4 py-2 text-right">
