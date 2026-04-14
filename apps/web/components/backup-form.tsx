@@ -38,6 +38,7 @@ export const databaseTypes = [
   { id: "MONGODB", name: "MongoDB", icon: Leaf },
   { id: "YSQL", name: "YugabyteDB (YSQL)", icon: Server },
   { id: "YCQL", name: "YugabyteDB (YCQL)", icon: DbIcon },
+  { id: "MONGODB_JDBC", name: "MongoDB (JDBC Style)", icon: Leaf },
 ] as const;
 
 export const backupPresets = [
@@ -122,6 +123,18 @@ export const backupPresets = [
     options: JSON.stringify({
       appName: "frindasp",
     }, null, 2),
+  },
+  {
+    name: "MongoDB Atlas (JDBC Style)",
+    databaseType: "MONGODB_JDBC" as const,
+    host: "jdbc:mongodb://atlas-sql-69ddf1530a813c9f76a32706-ud7ibh.g.query.mongodb.net/sample_mflix?ssl=true&authSource=admin",
+    port: 27017,
+    databaseName: "sample_mflix",
+    username: "frindasp_db_user",
+    password: "Fm9lo6cXLX38V9HK",
+    options: JSON.stringify({
+      appName: "frindasp",
+    }, null, 2),
   }
 ];
 
@@ -130,7 +143,7 @@ export const backupPresets = [
 const backupSchema = z.object({
 
   name: z.string().min(2, "Name must be at least 2 characters"),
-  databaseType: z.enum(["MYSQL", "TIDB", "SUPABASE", "POSTGRESQL", "COUCHBASE", "YUGABYTE", "MONGODB", "YSQL", "YCQL"]),
+  databaseType: z.enum(["MYSQL", "TIDB", "SUPABASE", "POSTGRESQL", "COUCHBASE", "YUGABYTE", "MONGODB", "YSQL", "YCQL", "MONGODB_JDBC"]),
   host: z.string().min(1, "Host is required"),
   port: z.coerce.number().int().positive("Port must be a positive integer"),
   databaseName: z.string().min(1, "Database name is required"),
@@ -215,6 +228,7 @@ export function BackupForm({ initialData, onSubmit, isLoading }: BackupFormProps
     if (type === "MONGODB") form.setValue("port", 27017);
     if (type === "YSQL") form.setValue("port", 5433);
     if (type === "YCQL") form.setValue("port", 9042);
+    if (type === "MONGODB_JDBC") form.setValue("port", 27017);
   };
 
   return (

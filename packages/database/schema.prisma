@@ -256,6 +256,7 @@ enum DatabaseType {
   MONGODB
   YSQL
   YCQL
+  MONGODB_JDBC
 }
 
 model BackupConfig {

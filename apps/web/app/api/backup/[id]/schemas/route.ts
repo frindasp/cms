@@ -114,8 +114,14 @@ export async function GET(
         break;
 
       case "MONGODB":
+      case "MONGODB_JDBC":
         const { MongoClient, ServerApiVersion } = await import('mongodb');
         let mUri = config.host;
+
+        if (mUri.startsWith("jdbc:mongodb")) {
+          mUri = mUri.replace("jdbc:mongodb://", "mongodb://");
+        }
+
         if (!mUri.startsWith("mongodb")) {
           const authPrefix = config.username && config.password ? `${encodeURIComponent(config.username)}:${encodeURIComponent(config.password)}@` : "";
           const portSuffix = (config.host.includes(":") || config.host.includes(",")) ? "" : `:${config.port}`;

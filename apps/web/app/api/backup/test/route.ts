@@ -128,9 +128,14 @@ export async function POST(request: Request) {
         break;
       
       case "MONGODB":
+      case "MONGODB_JDBC":
         try {
           const { MongoClient, ServerApiVersion } = await import('mongodb');
           let uri = host;
+          if (uri.startsWith("jdbc:mongodb")) {
+            uri = uri.replace("jdbc:mongodb://", "mongodb://");
+          }
+
           if (!uri.startsWith("mongodb")) {
             const authPrefix = username && password ? `${encodeURIComponent(username)}:${encodeURIComponent(password)}@` : "";
             const portSuffix = (host.includes(":") || host.includes(",")) ? "" : `:${port}`;
