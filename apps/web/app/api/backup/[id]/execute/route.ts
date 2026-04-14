@@ -1,9 +1,6 @@
 import { prisma } from "@workspace/database";
 import { auth } from "@/auth";
 import { ApiResponse } from "@/lib/api-response";
-import mysql from 'mysql2/promise';
-import pg from 'pg';
-import * as couchbase from 'couchbase';
 
 export async function POST(
   request: Request,
@@ -36,8 +33,9 @@ export async function POST(
     switch (config.databaseType) {
       case "MYSQL":
       case "TIDB":
+        const mysql = await import('mysql2/promise');
         const mysqlOptions = (config.options as any) || {};
-        const mysqlConn = await mysql.createConnection({
+        const mysqlConn = await mysql.default.createConnection({
           host: config.host,
           port: config.port,
           user: config.username,
@@ -111,7 +109,8 @@ export async function POST(
           }
         }
 
-        const pgClient = new pg.Client({
+        const pg = await import('pg');
+        const pgClient = new pg.default.Client({
           host: config.host,
           port: config.port,
           user: config.username,
@@ -135,6 +134,7 @@ export async function POST(
         const protocol = options?.protocol || defaultProtocol;
         const clusterConnStr = config.host.includes("://") ? config.host : `${protocol}://${config.host}`;
         
+        const cb = await import('couchbase');
         const cluster = await cb.connect(clusterConnStr, {
           username: config.username,
           password: config.password,

@@ -1,9 +1,6 @@
 import { prisma } from "@workspace/database";
 import { auth } from "@/auth";
 import { ApiResponse } from "@/lib/api-response";
-import mysql from 'mysql2/promise';
-import pg from 'pg';
-import * as couchbase from 'couchbase';
 
 export async function POST(
   request: Request,
@@ -25,8 +22,9 @@ export async function POST(
     switch (config.databaseType) {
       case "MYSQL":
       case "TIDB":
+        const mysql = await import('mysql2/promise');
         const mysqlOptions = (config.options as any) || {};
-        const mysqlConn = await mysql.createConnection({
+        const mysqlConn = await mysql.default.createConnection({
           host: config.host,
           port: config.port,
           user: config.username,
@@ -77,7 +75,8 @@ export async function POST(
         }
 
         // Use new pg.Client to be safe with ESM
-        const { Client } = pg;
+        const pg = await import('pg');
+        const { Client } = pg.default;
         const pgClient = new Client({
           host: config.host,
           port: config.port,

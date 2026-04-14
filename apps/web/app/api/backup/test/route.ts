@@ -1,8 +1,5 @@
 import { auth } from "@/auth";
 import { ApiResponse } from "@/lib/api-response";
-import mysql from 'mysql2/promise';
-import pg from 'pg';
-import * as couchbase from 'couchbase';
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -22,8 +19,9 @@ export async function POST(request: Request) {
       case "MYSQL":
       case "TIDB":
         try {
+          const mysql = await import('mysql2/promise');
           const mysqlOptions = options || {};
-          const mysqlConn = await mysql.createConnection({
+          const mysqlConn = await mysql.default.createConnection({
             host,
             port: Number(port),
             user: username,
@@ -61,7 +59,8 @@ export async function POST(request: Request) {
             }
           }
 
-          const pgClient = new pg.Client({
+          const pg = await import('pg');
+          const pgClient = new pg.default.Client({
             host,
             port: Number(port),
             user: username,
@@ -113,6 +112,7 @@ export async function POST(request: Request) {
           const protocol = options?.protocol || (host.includes("cloud.couchbase.com") ? "couchbases" : "couchbase");
           const clusterConnStr = host.includes("://") ? host : `${protocol}://${host}`;
           
+          const couchbase = await import('couchbase');
           const cluster = await couchbase.connect(clusterConnStr, {
             username: username,
             password: password,
