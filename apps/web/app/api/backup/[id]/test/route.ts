@@ -52,14 +52,32 @@ export async function POST(
             try {
               const fs = await import('fs/promises');
               const path = await import('path');
-              ssl.ca = await fs.readFile(path.join(process.cwd(), ssl.ca), 'utf8');
+              
+              const localPath = path.join(process.cwd(), ssl.ca);
+              const rootPath = path.join(process.cwd(), "..", "..", ssl.ca);
+              
+              let finalPath = localPath;
+              try {
+                await fs.access(localPath);
+              } catch {
+                try {
+                  await fs.access(rootPath);
+                  finalPath = rootPath;
+                } catch {
+                   // Fallback to original path if both fail, will error in readFile
+                }
+              }
+
+              ssl.ca = await fs.readFile(finalPath, 'utf8');
             } catch (err) {
               console.error("Failed to read SSL CA file:", err);
             }
           }
         }
 
-        const pgClient = new pg.Client({
+        // Use new pg.Client to be safe with ESM
+        const { Client } = pg;
+        const pgClient = new Client({
           host: config.host,
           port: config.port,
           user: config.username,
@@ -75,11 +93,13 @@ export async function POST(
         break;
 
       case "COUCHBASE":
+        // Dynamically import to avoid build issues if not used
+        const cb = await import('couchbase');
         const cbOptions = config.options as any;
         const protocol = cbOptions?.protocol || (config.host.includes("cloud.couchbase.com") ? "couchbases" : "couchbase");
         const clusterConnStr = config.host.includes("://") ? config.host : `${protocol}://${config.host}`;
         
-        const cluster = await couchbase.connect(clusterConnStr, {
+        const cluster = await cb.connect(clusterConnStr, {
           username: config.username,
           password: config.password,
           configProfile: cbOptions?.configProfile || "wanDevelopment",

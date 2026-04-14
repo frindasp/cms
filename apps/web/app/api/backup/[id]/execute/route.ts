@@ -87,7 +87,23 @@ export async function POST(
             try {
               const fs = await import('fs/promises');
               const path = await import('path');
-              ssl.ca = await fs.readFile(path.join(process.cwd(), ssl.ca), 'utf8');
+              
+              const localPath = path.join(process.cwd(), ssl.ca);
+              const rootPath = path.join(process.cwd(), "..", "..", ssl.ca);
+              
+              let finalPath = localPath;
+              try {
+                await fs.access(localPath);
+              } catch {
+                try {
+                  await fs.access(rootPath);
+                  finalPath = rootPath;
+                } catch {
+                   // Fallback to original
+                }
+              }
+
+              ssl.ca = await fs.readFile(finalPath, 'utf8');
             } catch (err) {
               console.error("Failed to read SSL CA file:", err);
             }
