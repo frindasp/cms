@@ -56,5 +56,8 @@
     "@workspace/typescript-config": "*",
     "eslint": "^9.39.2",
     "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": "22.x"
   }
 }
