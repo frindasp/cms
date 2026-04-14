@@ -42,11 +42,12 @@ export async function POST(request: Request) {
       case "POSTGRESQL":
       case "SUPABASE":
       case "YUGABYTE":
+      case "YSQL":
         try {
           const pgOptions = options || {};
           let ssl: any = false;
           
-          if (databaseType === "SUPABASE" || pgOptions.ssl) {
+          if (databaseType === "SUPABASE" || databaseType === "YSQL" || pgOptions.ssl) {
             ssl = pgOptions.ssl ? { ...pgOptions.ssl } : { rejectUnauthorized: false };
             
             if (ssl.ca && typeof ssl.ca === 'string' && ssl.ca.includes('.crt')) {
@@ -72,7 +73,37 @@ export async function POST(request: Request) {
           await pgClient.connect();
           await pgClient.end();
         } catch (err: any) {
-          throw new Error(`PostgreSQL/Yugabyte Error: ${err.message}`);
+          throw new Error(`PostgreSQL/YSQL Error: ${err.message}`);
+        }
+        break;
+
+      case "YCQL":
+        try {
+          const cassandra = await import('cassandra-driver');
+          const ycqlOptions = options || {};
+          let sslOptions: any = null;
+
+          if (ycqlOptions.ssl) {
+            sslOptions = { ...ycqlOptions.ssl };
+            if (sslOptions.ca && typeof sslOptions.ca === 'string' && sslOptions.ca.includes('.crt')) {
+              const fs = await import('fs/promises');
+              const path = await import('path');
+              sslOptions.ca = await fs.readFile(path.join(process.cwd(), sslOptions.ca), 'utf8');
+            }
+          }
+
+          const cassClient = new cassandra.Client({
+            contactPoints: [host],
+            protocolOptions: { port: Number(port) },
+            localDataCenter: ycqlOptions.localDataCenter || 'datacenter1',
+            credentials: { username: username, password: password },
+            sslOptions: sslOptions,
+          });
+
+          await cassClient.connect();
+          await cassClient.shutdown();
+        } catch (err: any) {
+          throw new Error(`YCQL Error: ${err.message}`);
         }
         break;
 
@@ -113,8 +144,10 @@ export async function POST(request: Request) {
             }
           }
 
+          const mongoOptions = typeof options === 'string' ? {} : (options || {});
+          
           const client = new MongoClient(uri, {
-            ...((options as any) || {}),
+            ...mongoOptions,
             serverApi: {
               version: ServerApiVersion.v1,
               strict: true,

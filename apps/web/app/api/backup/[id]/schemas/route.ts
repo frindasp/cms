@@ -56,9 +56,10 @@ export async function GET(
       case "POSTGRESQL":
       case "SUPABASE":
       case "YUGABYTE":
+      case "YSQL":
         const pgOptions = (config.options as any) || {};
         let ssl: any = false;
-        if (config.databaseType === "SUPABASE" || pgOptions.ssl) {
+        if (config.databaseType === "SUPABASE" || config.databaseType === "YSQL" || pgOptions.ssl) {
           ssl = pgOptions.ssl ? { ...pgOptions.ssl } : { rejectUnauthorized: false };
           if (ssl.ca && typeof ssl.ca === 'string' && ssl.ca.includes('.crt')) {
             const fs = await import('fs/promises');
@@ -128,8 +129,10 @@ export async function GET(
           }
         }
 
+        const mongoOptions = typeof config.options === 'string' ? {} : (config.options || {});
+
         const mClient = new MongoClient(mUri, {
-          ...((config.options as any) || {}),
+          ...(mongoOptions as any),
           serverApi: {
             version: ServerApiVersion.v1,
             strict: true,
@@ -145,6 +148,38 @@ export async function GET(
           sizeBytes: db.sizeOnDisk,
         }));
         await mClient.close();
+        break;
+
+      case "YCQL":
+        const cassandra = await import('cassandra-driver');
+        const ycqlOptions = (config.options as any) || {};
+        let ycqlSsl: any = null;
+
+        if (ycqlOptions.ssl) {
+          ycqlSsl = { ...ycqlOptions.ssl };
+          if (ycqlSsl.ca && typeof ycqlSsl.ca === 'string' && ycqlSsl.ca.includes('.crt')) {
+            const fs = await import('fs/promises');
+            const path = await import('path');
+            ycqlSsl.ca = await fs.readFile(path.join(process.cwd(), ycqlSsl.ca), 'utf8');
+          }
+        }
+
+        const cassClient = new cassandra.Client({
+          contactPoints: [config.host],
+          protocolOptions: { port: config.port },
+          localDataCenter: ycqlOptions.localDataCenter || 'datacenter1',
+          credentials: { username: config.username, password: config.password },
+          sslOptions: ycqlSsl,
+        });
+
+        await cassClient.connect();
+        const keyspaces = await cassClient.execute("SELECT keyspace_name FROM system_schema.keyspaces");
+        schemaList = keyspaces.rows.map((row: any) => ({
+          name: row.keyspace_name,
+          tableCount: undefined,
+          sizeBytes: 0, // Cassandra doesn't provide size simply via query easily
+        }));
+        await cassClient.shutdown();
         break;
     }
 
@@ -195,9 +230,10 @@ export async function DELETE(
       case "POSTGRESQL":
       case "SUPABASE":
       case "YUGABYTE":
+      case "YSQL":
         const pgOptions = (config.options as any) || {};
         let ssl: any = false;
-        if (config.databaseType === "SUPABASE" || pgOptions.ssl) {
+        if (config.databaseType === "SUPABASE" || config.databaseType === "YSQL" || pgOptions.ssl) {
           ssl = pgOptions.ssl ? { ...pgOptions.ssl } : { rejectUnauthorized: false };
           if (ssl.ca && typeof ssl.ca === 'string' && ssl.ca.includes('.crt')) {
             const fs = await import('fs/promises');
@@ -231,6 +267,33 @@ export async function DELETE(
         
         await cluster.buckets().dropBucket(schemaName);
         await cluster.close();
+        break;
+
+      case "YCQL":
+        const cassandra = await import('cassandra-driver');
+        const ycOptions = (config.options as any) || {};
+        let ycqlSsl: any = null;
+
+        if (ycOptions.ssl) {
+          ycqlSsl = { ...ycOptions.ssl };
+          if (ycqlSsl.ca && typeof ycqlSsl.ca === 'string' && ycqlSsl.ca.includes('.crt')) {
+            const fs = await import('fs/promises');
+            const path = await import('path');
+            ycqlSsl.ca = await fs.readFile(path.join(process.cwd(), ycqlSsl.ca), 'utf8');
+          }
+        }
+
+        const cassClient = new cassandra.Client({
+          contactPoints: [config.host],
+          protocolOptions: { port: config.port },
+          localDataCenter: ycOptions.localDataCenter || 'datacenter1',
+          credentials: { username: config.username, password: config.password },
+          sslOptions: ycqlSsl,
+        });
+
+        await cassClient.connect();
+        await cassClient.execute(`DROP KEYSPACE "${schemaName}"`);
+        await cassClient.shutdown();
         break;
     }
 

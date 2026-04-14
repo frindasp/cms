@@ -42,10 +42,11 @@ export async function POST(
       case "POSTGRESQL":
       case "SUPABASE":
       case "YUGABYTE":
+      case "YSQL":
         const pgOptions = (config.options as any) || {};
         let ssl: any = false;
         
-        if (config.databaseType === "SUPABASE" || pgOptions.ssl) {
+        if (config.databaseType === "SUPABASE" || config.databaseType === "YSQL" || pgOptions.ssl) {
           ssl = pgOptions.ssl ? { ...pgOptions.ssl } : { rejectUnauthorized: false };
           
           if (ssl.ca && typeof ssl.ca === 'string' && ssl.ca.includes('.crt')) {
@@ -92,6 +93,33 @@ export async function POST(
         await pgClient.end();
         break;
 
+      case "YCQL":
+        const cassandra = await import('cassandra-driver');
+        const ycqlOptions = (config.options as any) || {};
+        let ycqlSsl: any = null;
+
+        if (ycqlOptions.ssl) {
+          ycqlSsl = { ...ycqlOptions.ssl };
+          if (ycqlSsl.ca && typeof ycqlSsl.ca === 'string' && ycqlSsl.ca.includes('.crt')) {
+            const fs = await import('fs/promises');
+            const path = await import('path');
+            ycqlSsl.ca = await fs.readFile(path.join(process.cwd(), ycqlSsl.ca), 'utf8');
+          }
+        }
+
+        const cassClient = new cassandra.Client({
+          contactPoints: [config.host],
+          protocolOptions: { port: config.port },
+          localDataCenter: ycqlOptions.localDataCenter || 'datacenter1',
+          credentials: { username: config.username, password: config.password },
+          sslOptions: ycqlSsl,
+        });
+
+        await cassClient.connect();
+        message = "Successfully connected to YugabyteDB (YCQL).";
+        await cassClient.shutdown();
+        break;
+
       case "COUCHBASE":
         // Dynamically import to avoid build issues if not used
         const cb = await import('couchbase');
@@ -133,8 +161,10 @@ export async function POST(
           }
         }
 
+        const mongoOptions = typeof config.options === 'string' ? {} : (config.options || {});
+
         const mongoClient = new MongoClient(mongoUri, {
-          ...((config.options as any) || {}),
+          ...(mongoOptions as any),
           serverApi: {
             version: ServerApiVersion.v1,
             strict: true,

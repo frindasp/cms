@@ -76,10 +76,11 @@ export async function POST(
       case "POSTGRESQL":
       case "SUPABASE":
       case "YUGABYTE":
+      case "YSQL":
         const pgOptions = (config.options as any) || {};
         let ssl: any = false;
         
-        if (config.databaseType === "SUPABASE" || pgOptions.ssl) {
+        if (config.databaseType === "SUPABASE" || config.databaseType === "YSQL" || pgOptions.ssl) {
           ssl = pgOptions.ssl ? { ...pgOptions.ssl } : { rejectUnauthorized: false };
           
           // If CA is a path to a file, read it
@@ -162,8 +163,10 @@ export async function POST(
           }
         }
 
+        const mongoOptions = typeof config.options === 'string' ? {} : (config.options || {});
+
         const mongoClient = new MongoClient(mongoUri, {
-          ...((config.options as any) || {}),
+          ...(mongoOptions as any),
           serverApi: {
             version: ServerApiVersion.v1,
             strict: true,
@@ -177,6 +180,39 @@ export async function POST(
         success = true;
         backupDetail = `MongoDB connection verified. Found ${collections.length} collections in database: ${config.databaseName}`;
         await mongoClient.close();
+        break;
+
+      case "YCQL":
+        const cassandra = await import('cassandra-driver');
+        const ycOptions = (config.options as any) || {};
+        let ycqlSsl: any = null;
+
+        if (ycOptions.ssl) {
+          ycqlSsl = { ...ycOptions.ssl };
+          if (ycqlSsl.ca && typeof ycqlSsl.ca === 'string' && ycqlSsl.ca.includes('.crt')) {
+            const fs = await import('fs/promises');
+            const path = await import('path');
+            ycqlSsl.ca = await fs.readFile(path.join(process.cwd(), ycqlSsl.ca), 'utf8');
+          }
+        }
+
+        const cassClient = new cassandra.Client({
+          contactPoints: [config.host],
+          protocolOptions: { port: config.port },
+          localDataCenter: ycOptions.localDataCenter || 'datacenter1',
+          credentials: { username: config.username, password: config.password },
+          sslOptions: ycqlSsl,
+        });
+
+        await cassClient.connect();
+        const tableMetadata = await cassClient.execute(
+          "SELECT table_name FROM system_schema.tables WHERE keyspace_name = ?", 
+          [config.databaseName], 
+          { prepare: true }
+        );
+        success = true;
+        backupDetail = `YCQL connection verified. Found ${tableMetadata.rowLength} tables in keyspace: ${config.databaseName}`;
+        await cassClient.shutdown();
         break;
 
       default:

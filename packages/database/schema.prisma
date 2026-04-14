@@ -254,6 +254,8 @@ enum DatabaseType {
   COUCHBASE
   YUGABYTE
   MONGODB
+  YSQL
+  YCQL
 }
 
 model BackupConfig {

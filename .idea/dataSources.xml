@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
+    <data-source source="LOCAL" name="@frindasp.zjtcpif.mongodb.net" uuid="449a9cb5-eeaa-4e61-9676-f2bcbfe0438e">
+      <driver-ref>mongo.4</driver-ref>
+      <synchronize>true</synchronize>
+      <configured-by-url>true</configured-by-url>
+      <jdbc-driver>com.dbschema.MongoJdbcDriver</jdbc-driver>
+      <jdbc-url>mongodb+srv://frindasp_db_user:Fm9lo6cXLX38V9HK@frindasp.zjtcpif.mongodb.net/?appName=frindasp</jdbc-url>
+      <working-dir>$ProjectFileDir$</working-dir>
+    </data-source>
+    <data-source source="LOCAL" name="postgres@ap-southeast-3.b0ecb2da-7903-49c0-b31d-2862edf7eb05.aws.yugabyte.cloud" uuid="0527d2d8-1114-4b38-929c-317a8df9e913">
+      <driver-ref>postgresql</driver-ref>
+      <synchronize>true</synchronize>
+      <configured-by-url>true</configured-by-url>
+      <jdbc-driver>org.postgresql.Driver</jdbc-driver>
+      <jdbc-url>jdbc:postgresql://ap-southeast-3.b0ecb2da-7903-49c0-b31d-2862edf7eb05.aws.yugabyte.cloud:5432/postgres</jdbc-url>
+      <working-dir>$ProjectFileDir$</working-dir>
+    </data-source>
+    <data-source source="LOCAL" name="frindasp@gateway01.ap-southeast-1.prod.aws.tidbcloud.com" uuid="59396a5d-8c62-44a1-9517-288a17307970">
+      <driver-ref>tidb</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>com.mysql.cj.jdbc.Driver</jdbc-driver>
+      <jdbc-url>jdbc:mysql://gateway01.ap-southeast-1.prod.aws.tidbcloud.com:3306/frindasp</jdbc-url>
+      <working-dir>$ProjectFileDir$</working-dir>
+    </data-source>
+    <data-source source="LOCAL" name="yugabyte@ap-southeast-3.b0ecb2da-7903-49c0-b31d-2862edf7eb05.aws.yugabyte.cloud" uuid="e3ef0504-a510-4fa9-a60b-719f27e709a5">
+      <driver-ref>yugabyte</driver-ref>
+      <synchronize>true</synchronize>
+      <configured-by-url>true</configured-by-url>
+      <jdbc-driver>com.yugabyte.Driver</jdbc-driver>
+      <jdbc-url>jdbc:yugabytedb://ap-southeast-3.b0ecb2da-7903-49c0-b31d-2862edf7eb05.aws.yugabyte.cloud:5433/yugabyte</jdbc-url>
+      <working-dir>$ProjectFileDir$</working-dir>
+    </data-source>
+  </component>
+</project>

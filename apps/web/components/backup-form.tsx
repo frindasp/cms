@@ -36,6 +36,8 @@ export const databaseTypes = [
   { id: "COUCHBASE", name: "Couchbase", icon: DbIcon },
   { id: "YUGABYTE", name: "YugabyteDB", icon: Server },
   { id: "MONGODB", name: "MongoDB", icon: Leaf },
+  { id: "YSQL", name: "YugabyteDB (YSQL)", icon: Server },
+  { id: "YCQL", name: "YugabyteDB (YCQL)", icon: DbIcon },
 ] as const;
 
 export const backupPresets = [
@@ -53,10 +55,25 @@ export const backupPresets = [
     }, null, 2),
   },
   {
-    name: "YugabyteDB Cloud",
-    databaseType: "YUGABYTE" as const,
+    name: "YugabyteDB (YSQL)",
+    databaseType: "YSQL" as const,
     host: "ap-southeast-3.b0ecb2da-7903-49c0-b31d-2862edf7eb05.aws.yugabyte.cloud",
     port: 5433,
+    databaseName: "yugabyte",
+    username: "admin",
+    password: "KnKeoNqW-0VXQ0sVc1dTMPBMuBvQJN",
+    options: JSON.stringify({
+      ssl: {
+        rejectUnauthorized: true,
+        ca: "cred/root.crt"
+      }
+    }, null, 2),
+  },
+  {
+    name: "YugabyteDB (YCQL)",
+    databaseType: "YCQL" as const,
+    host: "ap-southeast-3.b0ecb2da-7903-49c0-b31d-2862edf7eb05.aws.yugabyte.cloud",
+    port: 9042,
     databaseName: "yugabyte",
     username: "admin",
     password: "KnKeoNqW-0VXQ0sVc1dTMPBMuBvQJN",
@@ -83,7 +100,19 @@ export const backupPresets = [
     }, null, 2),
   },
   {
-    name: "MongoDB Atlas",
+    name: "MongoDB Atlas (SRV)",
+    databaseType: "MONGODB" as const,
+    host: "mongodb+srv://frindasp.zjtcpif.mongodb.net",
+    port: 27017,
+    databaseName: "frindasp",
+    username: "frindasp_db_user",
+    password: "Fm9lo6cXLX38V9HK",
+    options: JSON.stringify({
+      appName: "frindasp"
+    }, null, 2),
+  },
+  {
+    name: "MongoDB Atlas (Standard)",
     databaseType: "MONGODB" as const,
     host: "ac-kdwlelp-shard-00-00.zjtcpif.mongodb.net:27017,ac-kdwlelp-shard-00-01.zjtcpif.mongodb.net:27017,ac-kdwlelp-shard-00-02.zjtcpif.mongodb.net:27017/?ssl=true&replicaSet=atlas-3gfccp-shard-0&authSource=admin",
     port: 27017,
@@ -101,7 +130,7 @@ export const backupPresets = [
 const backupSchema = z.object({
 
   name: z.string().min(2, "Name must be at least 2 characters"),
-  databaseType: z.enum(["MYSQL", "TIDB", "SUPABASE", "POSTGRESQL", "COUCHBASE", "YUGABYTE", "MONGODB"]),
+  databaseType: z.enum(["MYSQL", "TIDB", "SUPABASE", "POSTGRESQL", "COUCHBASE", "YUGABYTE", "MONGODB", "YSQL", "YCQL"]),
   host: z.string().min(1, "Host is required"),
   port: z.coerce.number().int().positive("Port must be a positive integer"),
   databaseName: z.string().min(1, "Database name is required"),
@@ -184,6 +213,8 @@ export function BackupForm({ initialData, onSubmit, isLoading }: BackupFormProps
     if (type === "POSTGRESQL" || type === "SUPABASE" || type === "YUGABYTE") form.setValue("port", 5432);
     if (type === "COUCHBASE") form.setValue("port", 8091);
     if (type === "MONGODB") form.setValue("port", 27017);
+    if (type === "YSQL") form.setValue("port", 5433);
+    if (type === "YCQL") form.setValue("port", 9042);
   };
 
   return (
