@@ -1,6 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
   Database, 
@@ -16,21 +17,45 @@ import {
   Clock,
   Download,
   RefreshCw,
-  Trash2
+  Trash2,
+  ChevronRight,
+  Trash,
+  Table as TableIcon,
+  Activity,
+  Save,
+  X
 } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 
 import { API_ROUTES } from "@/lib/constants";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@workspace/ui/components/card";
 import { Button } from "@workspace/ui/components/button";
 import { Badge } from "@workspace/ui/components/badge";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@workspace/ui/components/alert-dialog";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
 export default function BackupDetailPage() {
   const params = useParams();
   const id = params.id as string;
+  const router = useRouter();
   const queryClient = useQueryClient();
+  const [schemaToDrop, setSchemaToDrop] = useState<string | null>(null);
+  
+  // Inline editing state
+  const [editingSection, setEditingSection] = useState<string | null>(null);
+  const [editValues, setEditValues] = useState<any>({});
 
   const { data: config, isLoading } = useQuery({
     queryKey: ["backup-config", id],
@@ -121,6 +146,115 @@ export default function BackupDetailPage() {
     }
   });
 
+  const dropSchemaMutation = useMutation({
+    mutationFn: async (schemaName: string) => {
+      const res = await fetch(`${API_ROUTES.BACKUP}/${id}/schemas?name=${schemaName}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to drop schema");
+      return data;
+    },
+    onSuccess: (data: any) => {
+      toast.success(data.message);
+      queryClient.invalidateQueries({ queryKey: ["backup-schemas", id] });
+      setSchemaToDrop(null);
+    },
+    onError: (error: any) => {
+      toast.error("Failed to drop schema", {
+        description: error.message
+      });
+    }
+  });
+
+  const switchSchemaMutation = useMutation({
+    mutationFn: async (schemaName: string) => {
+      const res = await fetch(`${API_ROUTES.BACKUP}/${id}/switch?name=${schemaName}`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to switch schema");
+      return data.data;
+    },
+    onSuccess: (data: any) => {
+      router.push(`/admin/backup/${data.id}`);
+      toast.success(`Switched to ${data.databaseName}`);
+    },
+    onError: (error: any) => {
+      toast.error("Failed to switch schema", {
+        description: error.message
+      });
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (values: any) => {
+      const res = await fetch(`${API_ROUTES.BACKUP}/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update configuration");
+      return data.data;
+    },
+    onSuccess: () => {
+      toast.success("Configuration updated locally (Database sync might be needed)");
+      queryClient.invalidateQueries({ queryKey: ["backup-config", id] });
+      setEditingSection(null);
+    },
+    onError: (error: any) => {
+      toast.error("Update failed", { description: error.message });
+    }
+  });
+
+  const testConnectionMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`${API_ROUTES.BACKUP}/${id}/test`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Connection failed");
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success("Connection test successful", {
+        description: data.message
+      });
+    },
+    onError: (error: any) => {
+      toast.error("Connection failed", {
+        description: error.message
+      });
+    }
+  });
+
+  const startEditing = (section: string) => {
+    setEditingSection(section);
+    setEditValues({
+      databaseType: config.databaseType,
+      host: config.host,
+      port: config.port,
+      databaseName: config.databaseName,
+      username: config.username,
+      password: config.password,
+      options: config.options ? JSON.stringify(config.options, null, 2) : "",
+    });
+  };
+
+  const handleSave = () => {
+    const valuesToSave = { ...editValues };
+    if (editingSection === 'connection') {
+      try {
+        valuesToSave.options = valuesToSave.options ? JSON.parse(valuesToSave.options) : null;
+      } catch (e) {
+        toast.error("Invalid JSON in Extra Options");
+        return;
+      }
+    }
+    updateMutation.mutate(valuesToSave);
+  };
+
   if (isLoading) return <div className="p-8">Loading...</div>;
 
   if (!config) return <div className="p-8">Configuration not found</div>;
@@ -132,68 +266,203 @@ export default function BackupDetailPage() {
           <h2 className="text-3xl font-bold tracking-tight">{config.name}</h2>
           <p className="text-muted-foreground">Manage and monitor backups for this database.</p>
         </div>
-        <Button onClick={() => runBackupMutation.mutate()} disabled={runBackupMutation.isPending}>
-          <Play className="mr-2 h-4 w-4" />
-          {runBackupMutation.isPending ? "Running..." : "Run Backup Now"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => testConnectionMutation.mutate()} disabled={testConnectionMutation.isPending}>
+            <Activity className={`mr-2 h-4 w-4 ${testConnectionMutation.isPending ? "animate-spin" : ""}`} />
+            {testConnectionMutation.isPending ? "Testing..." : "Test Connection"}
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href={`/admin/backup/${id}/tables`}>
+              <TableIcon className="mr-2 h-4 w-4" />
+              Explore Tables
+            </Link>
+          </Button>
+          <Button onClick={() => runBackupMutation.mutate()} disabled={runBackupMutation.isPending}>
+            <Play className="mr-2 h-4 w-4" />
+            {runBackupMutation.isPending ? "Running..." : "Run Backup Now"}
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
+        <Card 
+          onDoubleClick={() => startEditing('type')} 
+          className={`cursor-pointer transition-all ${editingSection === 'type' ? 'ring-2 ring-primary' : 'hover:border-primary/50'}`}
+          title="Double click to edit"
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Database Type</CardTitle>
             <Database className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{config.databaseType}</div>
+            {editingSection === 'type' ? (
+              <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+                <select 
+                  className="w-full bg-background border rounded px-2 py-1 text-sm h-9"
+                  value={editValues.databaseType}
+                  onChange={(e) => setEditValues({ ...editValues, databaseType: e.target.value })}
+                >
+                  <option value="MYSQL">MySQL</option>
+                  <option value="TIDB">TiDB</option>
+                  <option value="POSTGRESQL">PostgreSQL</option>
+                  <option value="SUPABASE">Supabase</option>
+                  <option value="YUGABYTE">YugaByte</option>
+                  <option value="COUCHBASE">Couchbase</option>
+                </select>
+                <div className="flex justify-end gap-1">
+                  <Button size="icon" variant="ghost" onClick={() => setEditingSection(null)} className="h-7 w-7"><X className="h-3 w-3" /></Button>
+                  <Button size="icon" variant="secondary" onClick={handleSave} className="h-7 w-7" disabled={updateMutation.isPending}><Save className="h-3 w-3" /></Button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-2xl font-bold">{config.databaseType}</div>
+            )}
           </CardContent>
         </Card>
-        <Card>
+        <Card 
+          onDoubleClick={() => startEditing('host')}
+          className={`cursor-pointer transition-all ${editingSection === 'host' ? 'ring-2 ring-primary' : 'hover:border-primary/50'}`}
+          title="Double click to edit"
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Host Address</CardTitle>
             <Server className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl font-bold">{config.host}:{config.port}</div>
+            {editingSection === 'host' ? (
+              <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+                <div className="flex gap-2">
+                  <input 
+                    className="flex-1 bg-background border rounded px-2 py-1 text-xs"
+                    value={editValues.host}
+                    onChange={(e) => setEditValues({ ...editValues, host: e.target.value })}
+                    placeholder="Host"
+                  />
+                  <input 
+                    className="w-20 bg-background border rounded px-2 py-1 text-xs"
+                    value={editValues.port}
+                    onChange={(e) => setEditValues({ ...editValues, port: parseInt(e.target.value) || 0 })}
+                    placeholder="Port"
+                    type="number"
+                  />
+                </div>
+                <div className="flex justify-end gap-1">
+                  <Button size="icon" variant="ghost" onClick={() => setEditingSection(null)} className="h-7 w-7"><X className="h-3 w-3" /></Button>
+                  <Button size="icon" variant="secondary" onClick={handleSave} className="h-7 w-7" disabled={updateMutation.isPending}><Save className="h-3 w-3" /></Button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-lg font-bold truncate tracking-tight">{config.host}:{config.port}</div>
+            )}
           </CardContent>
         </Card>
-        <Card>
+        <Card 
+          onDoubleClick={() => startEditing('target')}
+          className={`cursor-pointer transition-all ${editingSection === 'target' ? 'ring-2 ring-primary' : 'hover:border-primary/50'}`}
+          title="Double click to edit"
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Target Database</CardTitle>
             <MapPin className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{config.databaseName}</div>
+            {editingSection === 'target' ? (
+              <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+                <input 
+                  className="w-full bg-background border rounded px-2 py-1 text-sm h-9"
+                  value={editValues.databaseName}
+                  onChange={(e) => setEditValues({ ...editValues, databaseName: e.target.value })}
+                  placeholder="Database Name"
+                />
+                <div className="flex justify-end gap-1">
+                  <Button size="icon" variant="ghost" onClick={() => setEditingSection(null)} className="h-7 w-7"><X className="h-3 w-3" /></Button>
+                  <Button size="icon" variant="secondary" onClick={handleSave} className="h-7 w-7" disabled={updateMutation.isPending}><Save className="h-3 w-3" /></Button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-2xl font-bold">{config.databaseName}</div>
+            )}
           </CardContent>
         </Card>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-3">
-          <CardHeader>
+        <Card 
+          onDoubleClick={() => startEditing('connection')}
+          className={`col-span-3 cursor-pointer transition-all ${editingSection === 'connection' ? 'ring-2 ring-primary' : 'hover:border-primary/50'}`}
+          title="Double click to edit"
+        >
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Connection Details</CardTitle>
+            {editingSection === 'connection' && (
+              <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                <Button size="sm" variant="ghost" onClick={() => setEditingSection(null)} className="h-8"><X className="h-4 w-4 mr-1" /> Cancel</Button>
+                <Button size="sm" variant="secondary" onClick={handleSave} className="h-8" disabled={updateMutation.isPending}><Save className="h-4 w-4 mr-1" /> Save</Button>
+              </div>
+            )}
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-2">
-              <User className="h-4 w-4 text-muted-foreground" />
-              <span className="font-medium">Username:</span>
-              <span>{config.username}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Lock className="h-4 w-4 text-muted-foreground" />
-              <span className="font-medium">Password:</span>
-              <span>••••••••</span>
-            </div>
-            {config.options && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Settings className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Extra Options:</span>
+            {editingSection === 'connection' ? (
+              <div className="space-y-4" onClick={(e) => e.stopPropagation()}>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-xs font-medium">Username:</span>
+                  </div>
+                  <input 
+                    className="w-full bg-background border rounded px-2 py-1 text-sm h-9"
+                    value={editValues.username}
+                    onChange={(e) => setEditValues({ ...editValues, username: e.target.value })}
+                  />
                 </div>
-                <pre className="bg-muted p-2 rounded text-xs overflow-auto">
-                  {JSON.stringify(config.options, null, 2)}
-                </pre>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Lock className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-xs font-medium">Password:</span>
+                  </div>
+                  <input 
+                    type="password"
+                    className="w-full bg-background border rounded px-2 py-1 text-sm h-9"
+                    value={editValues.password}
+                    onChange={(e) => setEditValues({ ...editValues, password: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Settings className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-xs font-medium">Extra Options (JSON):</span>
+                  </div>
+                  <textarea 
+                    className="w-full bg-background border rounded px-2 py-1 text-xs h-32 font-mono scrollbar-hide"
+                    value={editValues.options}
+                    onChange={(e) => setEditValues({ ...editValues, options: e.target.value })}
+                  />
+                </div>
               </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">Username:</span>
+                  <span>{config.username}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Lock className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">Password:</span>
+                  <span>••••••••</span>
+                </div>
+                {config.options && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Settings className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">Extra Options:</span>
+                    </div>
+                    <pre className="bg-muted p-2 rounded text-[10px] overflow-auto max-h-[150px]">
+                      {JSON.stringify(config.options, null, 2)}
+                    </pre>
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>
@@ -216,12 +485,12 @@ export default function BackupDetailPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {config.logs?.length === 0 ? (
+              {(config.backups || []).length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground border rounded-lg border-dashed">
                   No backups recorded yet.
                 </div>
               ) : (
-                config.logs.map((backup: any) => (
+                config.backups.map((backup: any) => (
                   <div key={backup.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/30 transition-colors">
                     <div className="flex items-center gap-4">
                       {backup.status === "SUCCESS" ? (
@@ -318,14 +587,19 @@ export default function BackupDetailPage() {
                     <th className="px-4 py-2 text-left font-medium">Name</th>
                     <th className="px-4 py-2 text-right font-medium">Tables</th>
                     <th className="px-4 py-2 text-right font-medium">Size</th>
+                    <th className="px-4 py-2 text-right font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
                   {isLoadingSchemas ? (
-                    <tr><td colSpan={3} className="px-4 py-8 text-center text-muted-foreground italic">Fetching data...</td></tr>
+                    <tr><td colSpan={4} className="px-4 py-8 text-center text-muted-foreground italic">Fetching data...</td></tr>
                   ) : schemas?.length > 0 ? (
                     schemas.map((s: any) => (
-                      <tr key={s.name} className={s.name === config.databaseName ? "bg-emerald-500/10 font-medium" : ""}>
+                      <tr 
+                        key={s.name} 
+                        className={`group cursor-pointer hover:bg-muted/50 transition-colors ${s.name === config.databaseName ? "bg-emerald-500/10 font-medium" : ""}`}
+                        onClick={() => switchSchemaMutation.mutate(s.name)}
+                      >
                         <td className="px-4 py-2 flex items-center gap-2">
                           {s.name}
                           {s.name === config.databaseName && <CheckCircle2 className="h-3 w-3 text-emerald-500" />}
@@ -336,10 +610,38 @@ export default function BackupDetailPage() {
                         <td className="px-4 py-2 text-right text-muted-foreground">
                           {(s.sizeBytes / 1024 / 1024).toFixed(2)} MB
                         </td>
+                        <td className="px-4 py-2 text-right">
+                          <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-blue-500 hover:text-blue-600 hover:bg-blue-50"
+                              asChild
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Link href={`/admin/backup/${id}/tables?name=${s.name}`} title={`Explore ${s.name} tables`}>
+                                <TableIcon className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSchemaToDrop(s.name);
+                              }}
+                              disabled={dropSchemaMutation.isPending}
+                            >
+                              <Trash className="h-4 w-4" />
+                            </Button>
+                            <ChevronRight className="h-4 w-4 text-muted-foreground self-center ml-1" />
+                          </div>
+                        </td>
                       </tr>
                     ))
                   ) : (
-                    <tr><td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">No schemas found.</td></tr>
+                    <tr><td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">No schemas found.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -347,6 +649,28 @@ export default function BackupDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      <AlertDialog open={!!schemaToDrop} onOpenChange={(open) => !open && setSchemaToDrop(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Drop Database Schema?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to drop the schema <span className="font-bold text-destructive underline">{schemaToDrop}</span>?
+              This action is permanent and will DELETE all data and tables within this schema.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => schemaToDrop && dropSchemaMutation.mutate(schemaToDrop)}
+              disabled={dropSchemaMutation.isPending}
+            >
+              {dropSchemaMutation.isPending ? "Dropping..." : "Drop Permanently"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

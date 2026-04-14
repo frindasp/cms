@@ -4,7 +4,7 @@
   "private": true,
   "packageManager": "npm@11.9.0",
   "scripts": {
-    "build": "turbo build",
+    "build": "npm i && turbo build",
     "dev": "turbo dev -- --port 3026",
     "lint": "turbo lint",
     "format": "turbo format",
