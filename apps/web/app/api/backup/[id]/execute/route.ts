@@ -31,7 +31,7 @@ export async function POST(
     // 2. Execute Backup Logic based on type
     // Since we don't have CLI tools, we'll verify connectivity and fetch some metadata
     switch (config.databaseType) {
-      case "TIDB":
+      case "TIDB": {
         const mysql = await import('mysql2/promise');
         const mysqlOptions = (config.options as any) || {};
         const mysqlConn = await mysql.default.createConnection({
@@ -69,8 +69,9 @@ export async function POST(
         backupDetail = `New Schema Created! Database \`${targetSchema}\` initialized with ${clonedCount} tables.`;
         await mysqlConn.end();
         break;
+      }
 
-      case "SUPABASE":
+      case "SUPABASE": {
         const pgOptions = (config.options as any) || {};
         let ssl: any = false;
         
@@ -116,11 +117,33 @@ export async function POST(
           connectionTimeoutMillis: 10000,
         });
         await pgClient.connect();
+
+        // 1. Create a new schema with timestamp
+        const dateSuffix = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const targetSchema = `backup_${dateSuffix}`;
+        await pgClient.query(`CREATE SCHEMA IF NOT EXISTS "${targetSchema}"`);
+
+        // 2. Fetch current tables from public schema
         const res = await pgClient.query("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'");
+        const tables = res.rows.map((r: any) => r.table_name);
+        
+        let clonedCount = 0;
+        for (const table of tables) {
+          try {
+            // 3. Clone table structure and data to the new schema
+            await pgClient.query(`CREATE TABLE "${targetSchema}"."${table}" (LIKE public."${table}" INCLUDING ALL)`);
+            await pgClient.query(`INSERT INTO "${targetSchema}"."${table}" SELECT * FROM public."${table}"`);
+            clonedCount++;
+          } catch (err) {
+            console.error(`Failed to clone table ${table}:`, err);
+          }
+        }
+
         success = true;
-        backupDetail = `Simulated backup success. Found ${res.rowCount} tables in public schema.`;
+        backupDetail = `Schema Backup Created! Schema "${targetSchema}" initialized with ${clonedCount} tables from public.`;
         await pgClient.end();
         break;
+      }
 
       default:
         throw new Error("Backup logic not implemented for this database type");

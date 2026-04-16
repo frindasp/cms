@@ -26,7 +26,9 @@ import {
   X,
   Copy,
   MoreHorizontal,
-  DownloadCloud
+  DownloadCloud,
+  Check,
+  ChevronsUpDown
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -56,12 +58,26 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@workspace/ui/components/dialog";
+import { cn } from "@workspace/ui/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@workspace/ui/components/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@workspace/ui/components/popover";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -80,6 +96,10 @@ export default function BackupDetailPage() {
   // Alert dialogs state
   const [rollbackLogId, setRollbackLogId] = useState<string | null>(null);
   const [restoreLogId, setRestoreLogId] = useState<string | null>(null);
+
+  // Combobox state
+  const [openConfig, setOpenConfig] = useState(false);
+  const [openLog, setOpenLog] = useState(false);
 
   // Inline editing state
   const [editingSection, setEditingSection] = useState<string | null>(null);
@@ -848,40 +868,107 @@ export default function BackupDetailPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
+            <div className="flex flex-col gap-2">
               <label className="text-sm font-medium">Select Source Configuration</label>
-              <select 
-                className="w-full bg-background border rounded px-3 py-2 text-sm"
-                value={cloneSourceId}
-                onChange={(e) => {
-                  setCloneSourceId(e.target.value);
-                  setCloneLogId(""); // Reset backup selection
-                }}
-              >
-                <option value="" disabled>-- Select Configuration --</option>
-                {allConfigs?.filter((c: any) => c.id !== id).map((c: any) => (
-                  <option key={c.id} value={c.id}>{c.name} ({c.databaseType})</option>
-                ))}
-              </select>
+              <Popover open={openConfig} onOpenChange={setOpenConfig}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openConfig}
+                    className="w-full justify-between font-normal"
+                  >
+                    {cloneSourceId
+                      ? allConfigs?.find((c: any) => c.id === cloneSourceId)?.name
+                      : "Select configuration..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                  <Command>
+                    <CommandInput placeholder="Search configuration..." />
+                    <CommandList>
+                      <CommandEmpty>No configuration found.</CommandEmpty>
+                      <CommandGroup>
+                        {allConfigs?.filter((c: any) => c.id !== id).map((c: any) => (
+                          <CommandItem
+                            key={c.id}
+                            value={c.name}
+                            onSelect={() => {
+                              setCloneSourceId(c.id);
+                              setCloneLogId("");
+                              setOpenConfig(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                cloneSourceId === c.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {c.name} ({c.databaseType})
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
+
             {cloneSourceId && (
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <label className="text-sm font-medium">Select Backup Data</label>
-                <select 
-                  className="w-full bg-background border rounded px-3 py-2 text-sm"
-                  value={cloneLogId}
-                  onChange={(e) => setCloneLogId(e.target.value)}
-                >
-                  <option value="" disabled>-- Select Backup --</option>
-                  {sourceConfigDetails?.backups?.filter((b: any) => b.status === "SUCCESS").map((b: any) => (
-                    <option key={b.id} value={b.id}>{b.fileName} ({(Number(b.fileSize)/1024/1024).toFixed(2)} MB)</option>
-                  )) || (
-                    <option disabled>No successful backups available</option>
-                  )}
-                  {sourceConfigDetails?.backups?.filter((b: any) => b.status === "SUCCESS").length === 0 && (
-                    <option disabled>No successful backups available</option>
-                  )}
-                </select>
+                <Popover open={openLog} onOpenChange={setOpenLog}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={openLog}
+                      className="w-full justify-between font-normal"
+                    >
+                      {cloneLogId
+                        ? sourceConfigDetails?.backups?.find((b: any) => b.id === cloneLogId)?.fileName
+                        : "Select backup..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                    <Command>
+                      <CommandInput placeholder="Search backup..." />
+                      <CommandList>
+                        <CommandEmpty>No backup found.</CommandEmpty>
+                        <CommandGroup>
+                          {sourceConfigDetails?.backups
+                            ?.filter((b: any) => b.status === "SUCCESS")
+                            .map((b: any) => (
+                              <CommandItem
+                                key={b.id}
+                                value={b.fileName}
+                                onSelect={() => {
+                                  setCloneLogId(b.id);
+                                  setOpenLog(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    cloneLogId === b.id ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                <div className="flex flex-col">
+                                  <span>{b.fileName}</span>
+                                  <span className="text-[10px] text-muted-foreground">
+                                    {(Number(b.fileSize) / 1024 / 1024).toFixed(2)} MB
+                                  </span>
+                                </div>
+                              </CommandItem>
+                            ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
             )}
           </div>

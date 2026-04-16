@@ -154,11 +154,11 @@ export async function DELETE(
           port: config.port,
           user: config.username,
           password: config.password,
-          database: "postgres", // Connect to default DB to drop another
+          database: config.databaseName,
           ssl: ssl,
         });
         await pgClient.connect();
-        await pgClient.query(`DROP DATABASE "${schemaName}"`);
+        await pgClient.query(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`);
         await pgClient.end();
         break;
     }
