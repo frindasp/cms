@@ -78,6 +78,7 @@ export async function POST(
         if (config.databaseType === "SUPABASE" || pgOptions.ssl) {
           ssl = pgOptions.ssl ? { ...pgOptions.ssl } : { rejectUnauthorized: false };
           
+          
           // If CA is a path to a file, read it
           if (ssl.ca && typeof ssl.ca === 'string' && ssl.ca.includes('.crt')) {
             try {
