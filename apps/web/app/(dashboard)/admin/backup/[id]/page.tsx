@@ -23,10 +23,14 @@ import {
   Table as TableIcon,
   Activity,
   Save,
-  X
+  X,
+  Copy,
+  MoreHorizontal,
+  DownloadCloud
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { CountdownProgress } from "@/components/countdown-progress";
 
 
 import { API_ROUTES } from "@/lib/constants";
@@ -44,6 +48,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@workspace/ui/components/alert-dialog";
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@workspace/ui/components/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@workspace/ui/components/dropdown-menu";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -54,9 +72,38 @@ export default function BackupDetailPage() {
   const queryClient = useQueryClient();
   const [schemaToDrop, setSchemaToDrop] = useState<string | null>(null);
   
+  // Clone feature state
+  const [cloneDialogOpen, setCloneDialogOpen] = useState(false);
+  const [cloneSourceId, setCloneSourceId] = useState("");
+  const [cloneLogId, setCloneLogId] = useState("");
+
+  // Alert dialogs state
+  const [rollbackLogId, setRollbackLogId] = useState<string | null>(null);
+  const [restoreLogId, setRestoreLogId] = useState<string | null>(null);
+
   // Inline editing state
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<any>({});
+
+  const { data: allConfigs } = useQuery({
+    queryKey: ["backup-configs", "all"],
+    queryFn: async () => {
+      const res = await fetch(`${API_ROUTES.BACKUP}?page=1&limit=100`);
+      const json = await res.json();
+      return json.data || [];
+    },
+    enabled: cloneDialogOpen,
+  });
+
+  const { data: sourceConfigDetails } = useQuery({
+    queryKey: ["backup-config", cloneSourceId],
+    queryFn: async () => {
+      const res = await fetch(`${API_ROUTES.BACKUP}/${cloneSourceId}`);
+      const json = await res.json();
+      return json.data;
+    },
+    enabled: !!cloneSourceId && cloneDialogOpen,
+  });
 
   const { data: config, isLoading } = useQuery({
     queryKey: ["backup-config", id],
@@ -111,7 +158,32 @@ export default function BackupDetailPage() {
     }
   });
 
-
+  const cloneMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`${API_ROUTES.BACKUP}/${id}/clone`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sourceLogId: cloneLogId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Backup clone failed");
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success("Backup successful", {
+        description: data.message
+      });
+      queryClient.invalidateQueries({ queryKey: ["backup-config", id] });
+      setCloneDialogOpen(false);
+      setCloneSourceId("");
+      setCloneLogId("");
+    },
+    onError: (error: any) => {
+      toast.error("Failed to backup from source", {
+        description: error.message
+      });
+    }
+  });
 
   const rollbackMutation = useMutation({
     mutationFn: async (logId: string) => {
@@ -127,11 +199,13 @@ export default function BackupDetailPage() {
         description: data.message
       });
       queryClient.invalidateQueries({ queryKey: ["backup-config", id] });
+      setRollbackLogId(null);
     },
     onError: (error: any) => {
       toast.error("Rollback failed", {
         description: error.message
       });
+      setRollbackLogId(null);
     }
   });
 
@@ -150,11 +224,13 @@ export default function BackupDetailPage() {
         description: data.message
       });
       queryClient.invalidateQueries({ queryKey: ["backup-config", id] });
+      setRestoreLogId(null);
     },
     onError: (error: any) => {
       toast.error("Restore failed", {
         description: error.message
       });
+      setRestoreLogId(null);
     }
   });
 
@@ -221,21 +297,42 @@ export default function BackupDetailPage() {
   });
 
   const testConnectionMutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch(`${API_ROUTES.BACKUP}/${id}/test`, {
-        method: "POST",
+    onMutate: () => {
+      const toastId = toast.loading("Testing Connection", { 
+        description: <CountdownProgress initialCount={20} text={`Connecting to ${config?.databaseName}...`} /> 
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Connection failed");
-      return data;
+      return { toastId };
     },
-    onSuccess: (data) => {
+    mutationFn: async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+      try {
+        const res = await fetch(`${API_ROUTES.BACKUP}/${id}/test`, {
+          method: "POST",
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Connection failed");
+        return data;
+      } catch (err: any) {
+        if (err.name === 'AbortError') {
+          throw new Error("Connection testing timed out after 20 seconds.");
+        }
+        throw err;
+      }
+    },
+    onSuccess: (data, variables, context) => {
       toast.success("Connection test successful", {
+        id: context?.toastId,
         description: data.message
       });
     },
-    onError: (error: any) => {
+    onError: (error: any, variables, context) => {
       toast.error("Connection failed", {
+        id: context?.toastId,
         description: error.message
       });
     }
@@ -267,6 +364,16 @@ export default function BackupDetailPage() {
     updateMutation.mutate(valuesToSave);
   };
 
+  const handleExplore = (e?: React.MouseEvent, schemaName?: string) => {
+    if (e) e.stopPropagation();
+    testConnectionMutation.mutate(undefined, {
+      onSuccess: () => {
+        const url = schemaName ? `/admin/backup/${id}/tables?name=${schemaName}` : `/admin/backup/${id}/tables`;
+        router.push(url);
+      }
+    });
+  };
+
   if (isLoading) return <div className="p-8">Loading...</div>;
 
   if (!config) return <div className="p-8">Configuration not found</div>;
@@ -283,16 +390,35 @@ export default function BackupDetailPage() {
             <Activity className={`mr-2 h-4 w-4 ${testConnectionMutation.isPending ? "animate-spin" : ""}`} />
             <span className="truncate">{testConnectionMutation.isPending ? "Testing..." : "Test Connection"}</span>
           </Button>
-          <Button variant="outline" size="sm" asChild className="flex-1 md:flex-none">
-            <Link href={`/admin/backup/${id}/tables`}>
-              <TableIcon className="mr-2 h-4 w-4" />
-              <span className="truncate">Explore Tables</span>
-            </Link>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex-1 md:flex-none"
+            onClick={(e) => handleExplore(e)}
+            disabled={testConnectionMutation.isPending}
+          >
+            <TableIcon className="mr-2 h-4 w-4" />
+            <span className="truncate">Explore Tables</span>
           </Button>
-          <Button size="sm" onClick={() => runBackupMutation.mutate()} disabled={runBackupMutation.isPending} className="w-full md:w-auto">
-            <Play className="mr-2 h-4 w-4" />
-            {runBackupMutation.isPending ? "Running..." : "Run Backup Now"}
-          </Button>
+          <div className="flex w-full md:w-auto">
+            <Button size="sm" onClick={() => runBackupMutation.mutate()} disabled={runBackupMutation.isPending} className="w-full md:w-auto rounded-r-none">
+              <Play className="mr-2 h-4 w-4" />
+              {runBackupMutation.isPending ? "Running..." : "Run Backup Now"}
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" className="rounded-l-none border-l border-primary-foreground/20 px-2" disabled={runBackupMutation.isPending}>
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setCloneDialogOpen(true)}>
+                  <DownloadCloud className="mr-2 h-4 w-4 text-muted-foreground" />
+                  Backup from other Source
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
 
@@ -314,13 +440,8 @@ export default function BackupDetailPage() {
                   value={editValues.databaseType}
                   onChange={(e) => setEditValues({ ...editValues, databaseType: e.target.value })}
                 >
-                  <option value="MYSQL">MySQL</option>
                   <option value="TIDB">TiDB</option>
-                  <option value="POSTGRESQL">PostgreSQL</option>
                   <option value="SUPABASE">Supabase</option>
-                  <option value="YUGABYTE">YugaByte</option>
-                  <option value="COUCHBASE">Couchbase</option>
-                  <option value="MONGODB">MongoDB</option>
                 </select>
                 <div className="flex justify-end gap-1">
                   <Button size="icon" variant="ghost" onClick={() => setEditingSection(null)} className="h-7 w-7"><X className="h-3 w-3" /></Button>
@@ -553,11 +674,7 @@ export default function BackupDetailPage() {
                             variant="ghost" 
                             size="icon" 
                             className="h-7 w-7 text-orange-500 hover:text-orange-600 hover:bg-orange-50"
-                            onClick={() => {
-                              if (confirm("Are you sure you want to rollback this backup? This will DELETE the backup schema from the database.")) {
-                                rollbackMutation.mutate(backup.id);
-                              }
-                            }}
+                            onClick={() => setRollbackLogId(backup.id)}
                             title="Rollback (Delete Schema)"
                             disabled={rollbackMutation.isPending}
                           >
@@ -567,11 +684,7 @@ export default function BackupDetailPage() {
                             variant="ghost" 
                             size="icon" 
                             className="h-7 w-7 text-blue-500 hover:text-blue-600 hover:bg-blue-50"
-                            onClick={() => {
-                              if (confirm("Are you sure you want to restore this backup? This may overwrite current data.")) {
-                                restoreMutation.mutate(backup.id);
-                              }
-                            }}
+                            onClick={() => setRestoreLogId(backup.id)}
                             title="Restore to Database"
                             disabled={restoreMutation.isPending}
                           >
@@ -589,7 +702,7 @@ export default function BackupDetailPage() {
 
         <Card className="col-span-1 lg:col-span-7">
           <CardHeader>
-            <CardTitle>All {config.databaseType === 'COUCHBASE' ? 'Buckets' : 'Databases'}</CardTitle>
+            <CardTitle>All Databases</CardTitle>
             <CardDescription>Advanced details for each found schema on the server.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -629,12 +742,11 @@ export default function BackupDetailPage() {
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-blue-500 hover:text-blue-600 hover:bg-blue-50"
-                              asChild
-                              onClick={(e) => e.stopPropagation()}
+                              onClick={(e) => handleExplore(e, s.name)}
+                              title={`Explore ${s.name} tables`}
+                              disabled={testConnectionMutation.isPending}
                             >
-                              <Link href={`/admin/backup/${id}/tables?name=${s.name}`} title={`Explore ${s.name} tables`}>
-                                <TableIcon className="h-4 w-4" />
-                              </Link>
+                              <TableIcon className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -684,6 +796,106 @@ export default function BackupDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={!!rollbackLogId} onOpenChange={(open) => !open && setRollbackLogId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Rollback Backup?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to rollback this backup? This action is permanent and will <span className="font-bold text-destructive">DELETE the backup schema</span> from the database.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => rollbackLogId && rollbackMutation.mutate(rollbackLogId)}
+              disabled={rollbackMutation.isPending}
+            >
+              {rollbackMutation.isPending ? "Rolling back..." : "Confirm Rollback"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!restoreLogId} onOpenChange={(open) => !open && setRestoreLogId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Restore Backup?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to restore this backup? This may <span className="font-bold">overwrite current data</span> in your database.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={() => restoreLogId && restoreMutation.mutate(restoreLogId)}
+              disabled={restoreMutation.isPending}
+            >
+              {restoreMutation.isPending ? "Restoring..." : "Confirm Restore"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={cloneDialogOpen} onOpenChange={setCloneDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Backup from other Source</DialogTitle>
+            <DialogDescription>
+              Copy a backup file from another database configuration and back it up into this database ({config.databaseName}).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Select Source Configuration</label>
+              <select 
+                className="w-full bg-background border rounded px-3 py-2 text-sm"
+                value={cloneSourceId}
+                onChange={(e) => {
+                  setCloneSourceId(e.target.value);
+                  setCloneLogId(""); // Reset backup selection
+                }}
+              >
+                <option value="" disabled>-- Select Configuration --</option>
+                {allConfigs?.filter((c: any) => c.id !== id).map((c: any) => (
+                  <option key={c.id} value={c.id}>{c.name} ({c.databaseType})</option>
+                ))}
+              </select>
+            </div>
+            {cloneSourceId && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Select Backup Data</label>
+                <select 
+                  className="w-full bg-background border rounded px-3 py-2 text-sm"
+                  value={cloneLogId}
+                  onChange={(e) => setCloneLogId(e.target.value)}
+                >
+                  <option value="" disabled>-- Select Backup --</option>
+                  {sourceConfigDetails?.backups?.filter((b: any) => b.status === "SUCCESS").map((b: any) => (
+                    <option key={b.id} value={b.id}>{b.fileName} ({(Number(b.fileSize)/1024/1024).toFixed(2)} MB)</option>
+                  )) || (
+                    <option disabled>No successful backups available</option>
+                  )}
+                  {sourceConfigDetails?.backups?.filter((b: any) => b.status === "SUCCESS").length === 0 && (
+                    <option disabled>No successful backups available</option>
+                  )}
+                </select>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCloneDialogOpen(false)}>Cancel</Button>
+            <Button 
+              onClick={() => cloneMutation.mutate()} 
+              disabled={!cloneSourceId || !cloneLogId || cloneMutation.isPending}
+            >
+              {cloneMutation.isPending ? "Backing up..." : "Clone & Backup"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

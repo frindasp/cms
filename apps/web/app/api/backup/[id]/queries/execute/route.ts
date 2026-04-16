@@ -26,7 +26,6 @@ export async function POST(
     let result: any = null;
 
     switch (config.databaseType) {
-      case "MYSQL":
       case "TIDB":
         const mysqlOptions = (config.options as any) || {};
         const mysqlConn = await mysql.createConnection({
@@ -44,12 +43,10 @@ export async function POST(
         await mysqlConn.end();
         break;
 
-      case "POSTGRESQL":
       case "SUPABASE":
-      case "YUGABYTE":
         const pgOptions = (config.options as any) || {};
         let ssl: any = false;
-        if (config.databaseType === "SUPABASE" || pgOptions.ssl) {
+        if (pgOptions.ssl) {
           ssl = pgOptions.ssl ? { ...pgOptions.ssl } : { rejectUnauthorized: false };
           if (ssl.ca && typeof ssl.ca === 'string' && ssl.ca.includes('.crt')) {
             const fs = await import('fs/promises');

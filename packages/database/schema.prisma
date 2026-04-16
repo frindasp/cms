@@ -247,16 +247,8 @@ model Portfolio {
 }
 
 enum DatabaseType {
-  MYSQL
   TIDB
   SUPABASE
-  POSTGRESQL
-  COUCHBASE
-  YUGABYTE
-  MONGODB
-  YSQL
-  YCQL
-  MONGODB_JDBC
 }
 
 model BackupConfig {

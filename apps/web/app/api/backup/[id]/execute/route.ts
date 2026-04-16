@@ -31,7 +31,6 @@ export async function POST(
     // 2. Execute Backup Logic based on type
     // Since we don't have CLI tools, we'll verify connectivity and fetch some metadata
     switch (config.databaseType) {
-      case "MYSQL":
       case "TIDB":
         const mysql = await import('mysql2/promise');
         const mysqlOptions = (config.options as any) || {};
@@ -71,14 +70,11 @@ export async function POST(
         await mysqlConn.end();
         break;
 
-      case "POSTGRESQL":
       case "SUPABASE":
-      case "YUGABYTE":
-      case "YSQL":
         const pgOptions = (config.options as any) || {};
         let ssl: any = false;
         
-        if (config.databaseType === "SUPABASE" || config.databaseType === "YSQL" || pgOptions.ssl) {
+        if (config.databaseType === "SUPABASE" || pgOptions.ssl) {
           ssl = pgOptions.ssl ? { ...pgOptions.ssl } : { rejectUnauthorized: false };
           
           // If CA is a path to a file, read it
@@ -124,100 +120,6 @@ export async function POST(
         success = true;
         backupDetail = `Simulated backup success. Found ${res.rowCount} tables in public schema.`;
         await pgClient.end();
-        break;
-
-      case "COUCHBASE":
-        const cb = await import('couchbase');
-        const options = config.options as any;
-        const isCloud = config.host.includes("cloud.couchbase.com");
-        const defaultProtocol = isCloud ? "couchbases" : "couchbase";
-        const protocol = options?.protocol || defaultProtocol;
-        const clusterConnStr = config.host.includes("://") ? config.host : `${protocol}://${config.host}`;
-        
-        const cluster = await cb.connect(clusterConnStr, {
-          username: config.username,
-          password: config.password,
-          configProfile: options?.configProfile || 'wanDevelopment',
-        });
-        
-        await cluster.ping();
-        success = true;
-        backupDetail = `Couchbase cluster ping successful. Connection verified for bucket: ${config.databaseName}`;
-        await cluster.close();
-        break;
-
-      case "MONGODB":
-      case "MONGODB_JDBC":
-        const { MongoClient, ServerApiVersion } = await import('mongodb');
-        let mongoUri = config.host;
-
-        if (mongoUri.startsWith("jdbc:mongodb")) {
-          mongoUri = mongoUri.replace("jdbc:mongodb://", "mongodb://");
-        }
-
-        if (!mongoUri.startsWith("mongodb")) {
-          const authPrefix = config.username && config.password ? `${encodeURIComponent(config.username)}:${encodeURIComponent(config.password)}@` : "";
-          const portSuffix = (config.host.includes(":") || config.host.includes(",")) ? "" : `:${config.port}`;
-          mongoUri = `mongodb://${authPrefix}${config.host}${portSuffix}`;
-        } else if (!mongoUri.includes("@") && config.username && config.password) {
-          const credentials = `${encodeURIComponent(config.username)}:${encodeURIComponent(config.password)}@`;
-          if (mongoUri.startsWith("mongodb+srv://")) {
-            mongoUri = mongoUri.replace("mongodb+srv://", `mongodb+srv://${credentials}`);
-          } else {
-            mongoUri = mongoUri.replace("mongodb://", `mongodb://${credentials}`);
-          }
-        }
-
-        const mongoOptions = typeof config.options === 'string' ? {} : (config.options || {});
-
-        const mongoClient = new MongoClient(mongoUri, {
-          ...(mongoOptions as any),
-          serverApi: {
-            version: ServerApiVersion.v1,
-            strict: true,
-            deprecationErrors: true,
-          }
-        });
-
-        await mongoClient.connect();
-        const db = mongoClient.db(config.databaseName);
-        const collections = await db.listCollections().toArray();
-        success = true;
-        backupDetail = `MongoDB connection verified. Found ${collections.length} collections in database: ${config.databaseName}`;
-        await mongoClient.close();
-        break;
-
-      case "YCQL":
-        const cassandra = await import('cassandra-driver');
-        const ycOptions = (config.options as any) || {};
-        let ycqlSsl: any = null;
-
-        if (ycOptions.ssl) {
-          ycqlSsl = { ...ycOptions.ssl };
-          if (ycqlSsl.ca && typeof ycqlSsl.ca === 'string' && ycqlSsl.ca.includes('.crt')) {
-            const fs = await import('fs/promises');
-            const path = await import('path');
-            ycqlSsl.ca = await fs.readFile(path.join(process.cwd(), ycqlSsl.ca), 'utf8');
-          }
-        }
-
-        const cassClient = new cassandra.Client({
-          contactPoints: [config.host],
-          protocolOptions: { port: config.port },
-          localDataCenter: ycOptions.localDataCenter || 'datacenter1',
-          credentials: { username: config.username, password: config.password },
-          sslOptions: ycqlSsl,
-        });
-
-        await cassClient.connect();
-        const tableMetadata = await cassClient.execute(
-          "SELECT table_name FROM system_schema.tables WHERE keyspace_name = ?", 
-          [config.databaseName], 
-          { prepare: true }
-        );
-        success = true;
-        backupDetail = `YCQL connection verified. Found ${tableMetadata.rowLength} tables in keyspace: ${config.databaseName}`;
-        await cassClient.shutdown();
         break;
 
       default:

@@ -20,7 +20,6 @@ export async function POST(
     let message = "";
 
     switch (config.databaseType) {
-      case "MYSQL":
       case "TIDB":
         const mysql = await import('mysql2/promise');
         const mysqlOptions = (config.options as any) || {};
@@ -33,18 +32,15 @@ export async function POST(
           connectTimeout: 10000,
         });
         await mysqlConn.ping();
-        message = "Successfully connected to TiDB/MySQL database.";
+        message = "Successfully connected to TiDB database.";
         await mysqlConn.end();
         break;
 
-      case "POSTGRESQL":
       case "SUPABASE":
-      case "YUGABYTE":
-      case "YSQL":
         const pgOptions = (config.options as any) || {};
         let ssl: any = false;
         
-        if (config.databaseType === "SUPABASE" || config.databaseType === "YSQL" || pgOptions.ssl) {
+        if (config.databaseType === "SUPABASE" || pgOptions.ssl) {
           ssl = pgOptions.ssl ? { ...pgOptions.ssl } : { rejectUnauthorized: false };
           
           if (ssl.ca && typeof ssl.ca === 'string' && ssl.ca.includes('.crt')) {
@@ -74,7 +70,6 @@ export async function POST(
           }
         }
 
-        // Use new pg.Client to be safe with ESM
         const pg = await import('pg');
         const { Client } = pg.default;
         const pgClient = new Client({
@@ -90,98 +85,6 @@ export async function POST(
         await pgClient.query("SELECT 1");
         message = `Successfully connected to ${config.databaseType} database.`;
         await pgClient.end();
-        break;
-
-      case "YCQL":
-        const cassandra = await import('cassandra-driver');
-        const ycqlOptions = (config.options as any) || {};
-        let ycqlSsl: any = null;
-
-        if (ycqlOptions.ssl) {
-          ycqlSsl = { ...ycqlOptions.ssl };
-          if (ycqlSsl.ca && typeof ycqlSsl.ca === 'string' && ycqlSsl.ca.includes('.crt')) {
-            const fs = await import('fs/promises');
-            const path = await import('path');
-            ycqlSsl.ca = await fs.readFile(path.join(process.cwd(), ycqlSsl.ca), 'utf8');
-          }
-        }
-
-        const cassClient = new cassandra.Client({
-          contactPoints: [config.host],
-          protocolOptions: { port: config.port },
-          localDataCenter: ycqlOptions.localDataCenter || 'datacenter1',
-          credentials: { username: config.username, password: config.password },
-          sslOptions: ycqlSsl,
-        });
-
-        await cassClient.connect();
-        message = "Successfully connected to YugabyteDB (YCQL).";
-        await cassClient.shutdown();
-        break;
-
-      case "COUCHBASE":
-        // Dynamically import to avoid build issues if not used
-        const cb = await import('couchbase');
-        const cbOptions = config.options as any;
-        
-        // Automatic protocol detection: 'couchbases' for Cloud/Capella, 'couchbase' for local
-        const isCloud = config.host.includes("cloud.couchbase.com");
-        const defaultProtocol = isCloud ? "couchbases" : "couchbase";
-        const protocol = cbOptions?.protocol || defaultProtocol;
-        
-        const clusterConnStr = config.host.includes("://") ? config.host : `${protocol}://${config.host}`;
-        
-        const cluster = await cb.connect(clusterConnStr, {
-          username: config.username,
-          password: config.password,
-          // 'wanDevelopment' helps avoid timeout issues when connecting across different networks
-          configProfile: cbOptions?.configProfile || 'wanDevelopment',
-        });
-        
-        // Ping includes specific services to ensure full connectivity
-        const pingResult = await cluster.ping();
-        message = `Successfully connected to Couchbase cluster. Ping status: ${JSON.stringify(pingResult.services)}`;
-        await cluster.close();
-        break;
-
-      case "MONGODB":
-      case "MONGODB_JDBC":
-        const { MongoClient, ServerApiVersion } = await import('mongodb');
-        let mongoUri = config.host;
-
-        if (mongoUri.startsWith("jdbc:mongodb")) {
-          mongoUri = mongoUri.replace("jdbc:mongodb://", "mongodb://");
-        }
-
-        if (!mongoUri.startsWith("mongodb")) {
-          const authPrefix = config.username && config.password ? `${encodeURIComponent(config.username)}:${encodeURIComponent(config.password)}@` : "";
-          const portSuffix = (config.host.includes(":") || config.host.includes(",")) ? "" : `:${config.port}`;
-          mongoUri = `mongodb://${authPrefix}${config.host}${portSuffix}`;
-        } else if (!mongoUri.includes("@") && config.username && config.password) {
-          const credentials = `${encodeURIComponent(config.username)}:${encodeURIComponent(config.password)}@`;
-          if (mongoUri.startsWith("mongodb+srv://")) {
-            mongoUri = mongoUri.replace("mongodb+srv://", `mongodb+srv://${credentials}`);
-          } else {
-            mongoUri = mongoUri.replace("mongodb://", `mongodb://${credentials}`);
-          }
-        }
-
-        const mongoOptions = typeof config.options === 'string' ? {} : (config.options || {});
-
-        const mongoClient = new MongoClient(mongoUri, {
-          ...(mongoOptions as any),
-          serverApi: {
-            version: ServerApiVersion.v1,
-            strict: true,
-            deprecationErrors: true,
-          },
-          connectTimeoutMS: 10000,
-        });
-
-        await mongoClient.connect();
-        await mongoClient.db("admin").command({ ping: 1 });
-        message = "Successfully connected to MongoDB Atlas.";
-        await mongoClient.close();
         break;
 
       default:

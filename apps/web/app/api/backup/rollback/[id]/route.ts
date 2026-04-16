@@ -23,7 +23,7 @@ export async function POST(
   const config = log.backupConfig;
 
   try {
-    if (config.databaseType === "MYSQL" || config.databaseType === "TIDB") {
+    if (config.databaseType === "TIDB") {
       const mysqlOptions = (config.options as any) || {};
       const mysqlConn = await mysql.createConnection({
         host: config.host,

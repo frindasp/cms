@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Database, MoreHorizontal, Edit, Trash, ExternalLink } from "lucide-react";
+import { Plus, Database, MoreHorizontal, Edit, Trash, ExternalLink, Activity } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -10,6 +10,7 @@ import { toast } from "sonner";
 
 import { Button } from "@workspace/ui/components/button";
 import { DataTable } from "@/components/data-table";
+import { CountdownProgress } from "@/components/countdown-progress";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -63,6 +64,41 @@ export default function BackupListPage() {
     },
   });
 
+  const testMutation = useMutation({
+    mutationFn: async (config: any) => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+      try {
+        const res = await fetch(`${API_ROUTES.BACKUP}/${config.id}/test`, {
+          method: "POST",
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        const data = await res.json();
+        // The API doesn't return data.success, it just returns a 200 plain object or 400 { error }
+        if (!res.ok) throw new Error(data.error || "Connection failed");
+        return { response: data, config };
+      } catch (err: any) {
+        if (err.name === 'AbortError') {
+          throw new Error("Connection testing timed out after 20 seconds.");
+        }
+        throw err;
+      }
+    },
+    onSuccess: (data) => {
+      toast.success(`Connected to ${data.config.databaseName} (${data.config.databaseType})`, { 
+        description: data.response?.message || "Connection test successful." 
+      });
+    },
+    onError: (error: any, config: any) => {
+      toast.error(`Failed connecting to ${config.databaseName} (${config.databaseType})`, { 
+        description: error.message 
+      });
+    },
+  });
+
   const columns: ColumnDef<any>[] = [
     {
       id: "actions",
@@ -82,6 +118,21 @@ export default function BackupListPage() {
                     <Edit className="mr-2 h-4 w-4" />
                     Edit
                   </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => {
+                    toast.loading(`Testing ${config.databaseName} (${config.databaseType})`, { 
+                      id: `test-${config.id}`,
+                      description: <CountdownProgress initialCount={20} text="Checking database connection..." />
+                    });
+                    testMutation.mutate(config, {
+                      onSettled: () => toast.dismiss(`test-${config.id}`)
+                    });
+                  }}
+                  className="cursor-pointer"
+                >
+                  <Activity className="mr-2 h-4 w-4" />
+                  Test Connection
                 </DropdownMenuItem>
                 <DropdownMenuItem 
                   onClick={() => setDeleteId(config.id)}
@@ -113,10 +164,26 @@ export default function BackupListPage() {
     {
       accessorKey: "host",
       header: "Host",
+      cell: ({ row }) => (
+        <div 
+          className="max-w-[200px] sm:max-w-[300px] md:max-w-[400px] lg:max-w-[500px] truncate" 
+          title={row.getValue("host")}
+        >
+          {row.getValue("host")}
+        </div>
+      ),
     },
     {
       accessorKey: "databaseName",
       header: "Database/Bucket",
+      cell: ({ row }) => (
+        <div 
+          className="max-w-[150px] sm:max-w-[200px] md:max-w-[250px] truncate" 
+          title={row.getValue("databaseName")}
+        >
+          {row.getValue("databaseName")}
+        </div>
+      ),
     },
   ];
 
@@ -143,7 +210,7 @@ export default function BackupListPage() {
         totalCount={data?.total || 0}
         onPageChange={setPage}
         isLoading={isLoading}
-        onRowClick={(row) => router.push(APP_ROUTES.ADMIN.BACKUP.DETAIL.replace("[id]", row.id))}
+        onRowClick={(row) => window.open(APP_ROUTES.ADMIN.BACKUP.DETAIL.replace("[id]", row.id), '_blank')}
       />
 
 
