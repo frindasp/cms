@@ -389,7 +389,7 @@ export default function BackupQueryEditPage() {
         </div>
 
         <div className="flex min-h-0 flex-col gap-4 md:col-span-9">
-          <Card className="flex min-h-0 flex-1 flex-col">
+          <Card className="flex min-h-[220px] flex-col md:min-h-0 md:flex-1">
             <CardHeader className="border-b px-4 py-2">
               <CardTitle className="flex items-center gap-2 text-sm">
                 <Code className="h-4 w-4" />
@@ -399,7 +399,7 @@ export default function BackupQueryEditPage() {
                 </Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent className="min-h-0 flex-1 p-0">
+            <CardContent className="min-h-[120px] flex-1 p-0 md:min-h-0">
               <Editor
                 height="100%"
                 defaultLanguage="sql"
@@ -434,7 +434,7 @@ export default function BackupQueryEditPage() {
             </CardContent>
           </Card>
 
-          <Card className="flex min-h-0 flex-1 flex-col">
+          <Card className="flex min-h-[220px] flex-col md:min-h-0 md:flex-1">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b px-4 py-2">
               <div className="space-y-0.5">
                 <CardTitle className="text-sm">Results</CardTitle>
@@ -455,7 +455,7 @@ export default function BackupQueryEditPage() {
                 </Button>
               )}
             </CardHeader>
-            <CardContent className="min-h-0 flex-1 p-0">
+            <CardContent className="min-h-[120px] flex-1 p-0 md:min-h-0">
               <div className="h-full overflow-auto">
                 {results && Array.isArray(results) && results.length > 0 ? (
                   <table className="w-full text-xs">
