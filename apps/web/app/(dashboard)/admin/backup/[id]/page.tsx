@@ -28,7 +28,8 @@ import {
   MoreHorizontal,
   DownloadCloud,
   Check,
-  ChevronsUpDown
+  ChevronsUpDown,
+  Info
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -143,6 +144,13 @@ export default function BackupDetailPage() {
     },
     enabled: !!config,
   });
+
+  // Automatic redirection for schema-level config
+  if (config?.databaseType === "SUPABASE" && config?.databaseName?.includes('/')) {
+    const schemaName = config.databaseName.split('/')[1] || 'public';
+    router.replace(`/admin/backup/${id}/schemas/${schemaName}`);
+    return <div className="p-8">Redirecting to schema...</div>;
+  }
 
 
   const runBackupMutation = useMutation({
@@ -410,35 +418,44 @@ export default function BackupDetailPage() {
             <Activity className={`mr-2 h-4 w-4 ${testConnectionMutation.isPending ? "animate-spin" : ""}`} />
             <span className="truncate">{testConnectionMutation.isPending ? "Testing..." : "Test Connection"}</span>
           </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="flex-1 md:flex-none"
-            onClick={(e) => handleExplore(e)}
-            disabled={testConnectionMutation.isPending}
-          >
-            <TableIcon className="mr-2 h-4 w-4" />
-            <span className="truncate">Explore Tables</span>
-          </Button>
-          <div className="flex w-full md:w-auto">
-            <Button size="sm" onClick={() => runBackupMutation.mutate()} disabled={runBackupMutation.isPending} className="w-full md:w-auto rounded-r-none">
-              <Play className="mr-2 h-4 w-4" />
-              {runBackupMutation.isPending ? "Running..." : "Run Backup Now"}
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="sm" className="rounded-l-none border-l border-primary-foreground/20 px-2" disabled={runBackupMutation.isPending}>
-                  <MoreHorizontal className="h-4 w-4" />
+          {(!config.databaseName.includes('/') && config.databaseType === "SUPABASE") ? (
+             <p className="text-xs text-muted-foreground bg-muted p-2 rounded border border-dashed flex items-center">
+               <Info className="mr-2 h-3.5 w-3.5" />
+               Select a schema below to manage backups and explore tables.
+             </p>
+          ) : (
+            <>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex-1 md:flex-none"
+                onClick={(e) => handleExplore(e)}
+                disabled={testConnectionMutation.isPending}
+              >
+                <TableIcon className="mr-2 h-4 w-4" />
+                <span className="truncate">Explore Tables</span>
+              </Button>
+              <div className="flex w-full md:w-auto">
+                <Button size="sm" onClick={() => runBackupMutation.mutate()} disabled={runBackupMutation.isPending} className="w-full md:w-auto rounded-r-none">
+                  <Play className="mr-2 h-4 w-4" />
+                  {runBackupMutation.isPending ? "Running..." : "Run Backup Now"}
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setCloneDialogOpen(true)}>
-                  <DownloadCloud className="mr-2 h-4 w-4 text-muted-foreground" />
-                  Backup from other Source
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" className="rounded-l-none border-l border-primary-foreground/20 px-2" disabled={runBackupMutation.isPending}>
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setCloneDialogOpen(true)}>
+                      <DownloadCloud className="mr-2 h-4 w-4 text-muted-foreground" />
+                      Backup from other Source
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -722,15 +739,19 @@ export default function BackupDetailPage() {
 
         <Card className="col-span-1 lg:col-span-7">
           <CardHeader>
-            <CardTitle>All Databases</CardTitle>
-            <CardDescription>Advanced details for each found schema on the server.</CardDescription>
+            <CardTitle>{config.databaseType === "SUPABASE" ? "All Schemas" : "All Databases"}</CardTitle>
+            <CardDescription>
+              {config.databaseType === "SUPABASE" 
+                ? "Advanced details for each found schema on the PostgreSQL server." 
+                : "Advanced details for each found database on the server."}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="rounded-md border overflow-x-auto scrollbar-hide">
               <table className="w-full text-sm min-w-[600px]">
                 <thead className="bg-muted/50 border-b">
                   <tr>
-                    <th className="px-4 py-2 text-left font-medium">Name</th>
+                    <th className="px-4 py-2 text-left font-medium">{config.databaseType === "SUPABASE" ? "Schema Name" : "Name"}</th>
                     <th className="px-4 py-2 text-right font-medium">Tables</th>
                     <th className="px-4 py-2 text-right font-medium">Size</th>
                     <th className="px-4 py-2 text-right font-medium">Actions</th>
@@ -743,8 +764,14 @@ export default function BackupDetailPage() {
                     schemas.map((s: any) => (
                       <tr 
                         key={s.name} 
-                        className={`group cursor-pointer hover:bg-muted/50 transition-colors ${s.name === config.databaseName ? "bg-emerald-500/10 font-medium" : ""}`}
-                        onClick={() => switchSchemaMutation.mutate(s.name)}
+                        className={`group cursor-pointer hover:bg-muted/50 transition-colors ${s.name === (config.databaseType === "SUPABASE" ? (config.databaseName.split('/')[1] || 'public') : config.databaseName) ? "bg-emerald-500/10 font-medium" : ""}`}
+                        onClick={() => {
+                          if (config.databaseType === "SUPABASE") {
+                            router.push(`/admin/backup/${id}/schemas/${s.name}`);
+                          } else {
+                            switchSchemaMutation.mutate(s.name);
+                          }
+                        }}
                       >
                         <td className="px-4 py-2 flex items-center gap-2 truncate">
                           <span className="truncate max-w-[150px] md:max-w-none">{s.name}</span>

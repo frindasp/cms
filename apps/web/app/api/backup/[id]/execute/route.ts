@@ -108,12 +108,22 @@ export async function POST(
         }
 
         const pg = await import('pg');
-        const pgClient = new pg.default.Client({
+        const { Client } = pg.default;
+
+        let dbName = config.databaseName;
+        let sourceSchema = 'public';
+        if (dbName.includes('/')) {
+          const parts = dbName.split('/');
+          dbName = parts[0] || dbName;
+          sourceSchema = parts[1] || 'public';
+        }
+
+        const pgClient = new Client({
           host: config.host,
           port: config.port,
           user: config.username,
           password: config.password,
-          database: config.databaseName,
+          database: dbName,
           ssl: ssl,
           connectionTimeoutMillis: 10000,
         });
@@ -121,19 +131,19 @@ export async function POST(
 
         // 1. Create a new schema with timestamp
         const dateSuffix = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-        const targetSchema = `backup_${dateSuffix}`;
+        const targetSchema = `${sourceSchema}_${dateSuffix}`;
         await pgClient.query(`CREATE SCHEMA IF NOT EXISTS "${targetSchema}"`);
 
-        // 2. Fetch current tables from public schema
-        const res = await pgClient.query("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'");
+        // 2. Fetch current tables from source schema
+        const res = await pgClient.query("SELECT table_name FROM information_schema.tables WHERE table_schema = $1", [sourceSchema]);
         const tables = res.rows.map((r: any) => r.table_name);
         
         let clonedCount = 0;
         for (const table of tables) {
           try {
             // 3. Clone table structure and data to the new schema
-            await pgClient.query(`CREATE TABLE "${targetSchema}"."${table}" (LIKE public."${table}" INCLUDING ALL)`);
-            await pgClient.query(`INSERT INTO "${targetSchema}"."${table}" SELECT * FROM public."${table}"`);
+            await pgClient.query(`CREATE TABLE "${targetSchema}"."${table}" (LIKE "${sourceSchema}"."${table}" INCLUDING ALL)`);
+            await pgClient.query(`INSERT INTO "${targetSchema}"."${table}" SELECT * FROM "${sourceSchema}"."${table}"`);
             clonedCount++;
           } catch (err) {
             console.error(`Failed to clone table ${table}:`, err);
@@ -141,7 +151,7 @@ export async function POST(
         }
 
         success = true;
-        backupDetail = `Schema Backup Created! Schema "${targetSchema}" initialized with ${clonedCount} tables from public.`;
+        backupDetail = `Schema Backup Created! Schema "${targetSchema}" initialized with ${clonedCount} tables from ${sourceSchema}.`;
         await pgClient.end();
         break;
       }

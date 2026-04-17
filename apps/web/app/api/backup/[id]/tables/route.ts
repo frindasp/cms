@@ -55,13 +55,22 @@ export async function GET(
           ssl = { rejectUnauthorized: false };
         }
         const pg = await import('pg');
-        const targetSchema = targetDbName || 'public';
+        
+        let dbName = config.databaseName;
+        let defaultSchema = 'public';
+        if (dbName.includes('/')) {
+          const parts = dbName.split('/');
+          dbName = parts[0] || dbName;
+          defaultSchema = parts[1] || 'public';
+        }
+
+        const targetSchema = targetDbName || defaultSchema;
         const pgClient = new pg.default.Client({
           host: config.host,
           port: config.port,
           user: config.username,
           password: config.password,
-          database: config.databaseName,
+          database: dbName,
           ssl: ssl,
         });
         await pgClient.connect();

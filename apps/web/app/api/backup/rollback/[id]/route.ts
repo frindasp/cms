@@ -57,6 +57,40 @@ export async function POST(
       await mysqlConn.end();
     }
 
+    if (config.databaseType === "SUPABASE") {
+      const pg = await import('pg');
+      const pgClient = new pg.default.Client({
+        host: config.host,
+        port: config.port,
+        user: config.username,
+        password: config.password,
+        database: config.databaseName.split('/')[0] || config.databaseName,
+        ssl: { rejectUnauthorized: false },
+      });
+      await pgClient.connect();
+
+      // Extract schema name from fileName (formatted as {sourceSchema}_{date}.sql)
+      const schemaName = log.fileName?.replace('.sql', '');
+      
+      if (schemaName) {
+        // DROP the created schema
+        await pgClient.query(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`);
+        
+        // Update log status to reflect rollback
+        await prisma.backupLog.update({
+          where: { id: log.id },
+          data: {
+            status: "FAILED",
+            error: "Rollback: This snapshot has been deleted by the user.",
+          }
+        });
+
+        await pgClient.end();
+        return ApiResponse.success({ message: `Rollback successful. Schema "${schemaName}" has been deleted.` });
+      }
+      await pgClient.end();
+    }
+
     return ApiResponse.error("Rollback not supported for this database type or configuration", 400);
   } catch (error: any) {
     return ApiResponse.error(`Rollback failed: ${error.message}`, 400);

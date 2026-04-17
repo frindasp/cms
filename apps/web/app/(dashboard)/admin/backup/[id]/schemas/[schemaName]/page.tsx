@@ -1,0 +1,626 @@
+"use client";
+
+import { useParams } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { 
+  Database, 
+  Server, 
+  MapPin, 
+  User, 
+  Lock, 
+  Settings, 
+  Play, 
+  History,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Download,
+  RefreshCw,
+  Trash2,
+  ChevronRight,
+  Trash,
+  Table as TableIcon,
+  Activity,
+  Save,
+  X,
+  Copy,
+  MoreHorizontal,
+  DownloadCloud,
+  Check,
+  ChevronsUpDown,
+  ChevronLeft
+} from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { CountdownProgress } from "@/components/countdown-progress";
+
+
+import { API_ROUTES } from "@/lib/constants";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@workspace/ui/components/card";
+import { Button } from "@workspace/ui/components/button";
+import { Badge } from "@workspace/ui/components/badge";
+import { PasswordInput } from "@workspace/ui/components/password-input";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@workspace/ui/components/alert-dialog";
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@workspace/ui/components/dialog";
+import { cn } from "@workspace/ui/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@workspace/ui/components/dropdown-menu";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@workspace/ui/components/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@workspace/ui/components/popover";
+import { toast } from "sonner";
+import { format } from "date-fns";
+
+export default function SchemaDetailPage() {
+  const params = useParams();
+  const id = params.id as string;
+  const schemaNameFromUrl = params.schemaName as string;
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const [schemaToDrop, setSchemaToDrop] = useState<string | null>(null);
+  
+  // Clone feature state
+  const [cloneDialogOpen, setCloneDialogOpen] = useState(false);
+  const [cloneSourceId, setCloneSourceId] = useState("");
+  const [cloneLogId, setCloneLogId] = useState("");
+
+  // Alert dialogs state
+  const [rollbackLogId, setRollbackLogId] = useState<string | null>(null);
+  const [restoreLogId, setRestoreLogId] = useState<string | null>(null);
+
+  // Combobox state
+  const [openConfig, setOpenConfig] = useState(false);
+  const [openLog, setOpenLog] = useState(false);
+
+  // Inline editing state
+  const [editingSection, setEditingSection] = useState<string | null>(null);
+  const [editValues, setEditValues] = useState<any>({});
+
+  const { data: allConfigs } = useQuery({
+    queryKey: ["backup-configs", "all"],
+    queryFn: async () => {
+      const res = await fetch(`${API_ROUTES.BACKUP}?page=1&limit=100`);
+      const json = await res.json();
+      return json.data || [];
+    },
+    enabled: cloneDialogOpen,
+  });
+
+  const { data: sourceConfigDetails } = useQuery({
+    queryKey: ["backup-config", cloneSourceId],
+    queryFn: async () => {
+      const res = await fetch(`${API_ROUTES.BACKUP}/${cloneSourceId}`);
+      const json = await res.json();
+      return json.data;
+    },
+    enabled: !!cloneSourceId && cloneDialogOpen,
+  });
+
+  const { data: config, isLoading } = useQuery({
+    queryKey: ["backup-config", id],
+    queryFn: async () => {
+      const res = await fetch(`${API_ROUTES.BACKUP}/${id}`);
+      const json = await res.json();
+      return json.data;
+    },
+  });
+
+  const { data: schemas, isLoading: isLoadingSchemas } = useQuery({
+    queryKey: ["backup-schemas", id],
+    queryFn: async () => {
+      const res = await fetch(`${API_ROUTES.BACKUP}/${id}/schemas`);
+      const json = await res.json();
+      return json.data || [];
+    },
+    enabled: !!config,
+  });
+
+
+  const runBackupMutation = useMutation({
+    mutationFn: async () => {
+      // 1. First test connection
+      const testRes = await fetch(`${API_ROUTES.BACKUP}/${id}/test`, {
+        method: "POST",
+      });
+      const testData = await testRes.json();
+      if (!testRes.ok) {
+        throw new Error(`Connection test failed: ${testData.error || "Unknown error"}`);
+      }
+
+      // 2. If connection OK, proceed with backup
+      const res = await fetch(`${API_ROUTES.BACKUP}/${id}/execute`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Backup failed");
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success("Backup successful", {
+        description: data.message
+      });
+      queryClient.invalidateQueries({ queryKey: ["backup-config", id] });
+    },
+    onError: (error: any) => {
+      toast.error("Backup failed", {
+        description: error.message
+      });
+      queryClient.invalidateQueries({ queryKey: ["backup-config", id] });
+    }
+  });
+
+  const cloneMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`${API_ROUTES.BACKUP}/${id}/clone`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sourceLogId: cloneLogId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Backup clone failed");
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success("Backup successful", {
+        description: data.message
+      });
+      queryClient.invalidateQueries({ queryKey: ["backup-config", id] });
+      setCloneDialogOpen(false);
+      setCloneSourceId("");
+      setCloneLogId("");
+    },
+    onError: (error: any) => {
+      toast.error("Failed to backup from source", {
+        description: error.message
+      });
+    }
+  });
+
+  const rollbackMutation = useMutation({
+    mutationFn: async (logId: string) => {
+      const res = await fetch(`${API_ROUTES.BACKUP}/rollback/${logId}`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Rollback failed");
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success("Rollback successful", {
+        description: data.message
+      });
+      queryClient.invalidateQueries({ queryKey: ["backup-config", id] });
+      setRollbackLogId(null);
+    },
+    onError: (error: any) => {
+      toast.error("Rollback failed", {
+        description: error.message
+      });
+      setRollbackLogId(null);
+    }
+  });
+
+  const restoreMutation = useMutation({
+
+    mutationFn: async (logId: string) => {
+      const res = await fetch(`${API_ROUTES.BACKUP}/restore/${logId}`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Restore failed");
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success("Restore successful", {
+        description: data.message
+      });
+      queryClient.invalidateQueries({ queryKey: ["backup-config", id] });
+      setRestoreLogId(null);
+    },
+    onError: (error: any) => {
+      toast.error("Restore failed", {
+        description: error.message
+      });
+      setRestoreLogId(null);
+    }
+  });
+
+  const dropSchemaMutation = useMutation({
+    mutationFn: async (schemaName: string) => {
+      const res = await fetch(`${API_ROUTES.BACKUP}/${id}/schemas?name=${schemaName}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to drop schema");
+      return data;
+    },
+    onSuccess: (data: any) => {
+      toast.success(data.message);
+      queryClient.invalidateQueries({ queryKey: ["backup-schemas", id] });
+      setSchemaToDrop(null);
+    },
+    onError: (error: any) => {
+      toast.error("Failed to drop schema", {
+        description: error.message
+      });
+    }
+  });
+
+  const switchSchemaMutation = useMutation({
+    mutationFn: async (schemaName: string) => {
+      const res = await fetch(`${API_ROUTES.BACKUP}/${id}/switch?name=${schemaName}`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to switch schema");
+      return data.data;
+    },
+    onSuccess: (data: any) => {
+      router.push(`/admin/backup/${data.id}/schemas/${schemaNameFromUrl}`);
+      toast.success(`Switched to ${data.databaseName}`);
+    },
+    onError: (error: any) => {
+      toast.error("Failed to switch schema", {
+        description: error.message
+      });
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (values: any) => {
+      const res = await fetch(`${API_ROUTES.BACKUP}/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update configuration");
+      return data.data;
+    },
+    onSuccess: () => {
+      toast.success("Configuration updated locally (Database sync might be needed)");
+      queryClient.invalidateQueries({ queryKey: ["backup-config", id] });
+      setEditingSection(null);
+    },
+    onError: (error: any) => {
+      toast.error("Update failed", { description: error.message });
+    }
+  });
+
+  const testConnectionMutation = useMutation({
+    onMutate: () => {
+      const toastId = toast.loading("Testing Connection", { 
+        description: <CountdownProgress initialCount={20} text={`Connecting to ${config?.databaseName}...`} /> 
+      });
+      return { toastId };
+    },
+    mutationFn: async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+      try {
+        const res = await fetch(`${API_ROUTES.BACKUP}/${id}/test`, {
+          method: "POST",
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Connection failed");
+        return data;
+      } catch (err: any) {
+        if (err.name === 'AbortError') {
+          throw new Error("Connection testing timed out after 20 seconds.");
+        }
+        throw err;
+      }
+    },
+    onSuccess: (data, variables, context) => {
+      toast.success("Connection test successful", {
+        id: context?.toastId,
+        description: data.message
+      });
+    },
+    onError: (error: any, variables, context) => {
+      toast.error("Connection failed", {
+        id: context?.toastId,
+        description: error.message
+      });
+    }
+  });
+
+  const startEditing = (section: string) => {
+    setEditingSection(section);
+    setEditValues({
+      databaseType: config.databaseType,
+      host: config.host,
+      port: config.port,
+      databaseName: config.databaseName,
+      username: config.username,
+      password: config.password,
+      options: config.options ? JSON.stringify(config.options, null, 2) : "",
+    });
+  };
+
+  const handleSave = () => {
+    const valuesToSave = { ...editValues };
+    if (editingSection === 'connection') {
+      try {
+        valuesToSave.options = valuesToSave.options ? JSON.parse(valuesToSave.options) : null;
+      } catch (e) {
+        toast.error("Invalid JSON in Extra Options");
+        return;
+      }
+    }
+    updateMutation.mutate(valuesToSave);
+  };
+
+  const handleExplore = (e?: React.MouseEvent, schemaName?: string) => {
+    if (e) e.stopPropagation();
+    testConnectionMutation.mutate(undefined, {
+      onSuccess: () => {
+        const url = `/admin/backup/${id}/schemas/${schemaNameFromUrl}/tables`;
+        router.push(url);
+      }
+    });
+  };
+
+  if (isLoading) return <div className="p-8">Loading...</div>;
+
+  if (!config) return <div className="p-8">Configuration not found</div>;
+
+  const displayDbName = config.databaseName.includes('/') ? config.databaseName.split('/')[1] : config.databaseName;
+
+  return (
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+      <div className="flex items-center gap-2 mb-2">
+         <Button variant="ghost" size="icon" onClick={() => router.push(`/admin/backup/${id}`)}>
+            <ChevronLeft className="h-4 w-4" />
+         </Button>
+         <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Link href="/admin/backup" className="hover:text-primary transition-colors">Backups</Link>
+            <ChevronRight className="h-3 w-3" />
+            <Link href={`/admin/backup/${id}`} className="hover:text-primary transition-colors">{config.name}</Link>
+            <ChevronRight className="h-3 w-3" />
+            <span className="font-medium text-foreground">{schemaNameFromUrl}</span>
+         </div>
+      </div>
+
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight">{schemaNameFromUrl}</h2>
+          <p className="text-sm text-muted-foreground whitespace-normal">Schema management for {config.name}.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => testConnectionMutation.mutate()} disabled={testConnectionMutation.isPending} className="flex-1 md:flex-none">
+            <Activity className={`mr-2 h-4 w-4 ${testConnectionMutation.isPending ? "animate-spin" : ""}`} />
+            <span className="truncate">{testConnectionMutation.isPending ? "Testing..." : "Test Connection"}</span>
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex-1 md:flex-none"
+            onClick={(e) => handleExplore(e)}
+            disabled={testConnectionMutation.isPending}
+          >
+            <TableIcon className="mr-2 h-4 w-4" />
+            <span className="truncate">Explore Tables</span>
+          </Button>
+          <div className="flex w-full md:w-auto">
+            <Button size="sm" onClick={() => runBackupMutation.mutate()} disabled={runBackupMutation.isPending} className="w-full md:w-auto rounded-r-none">
+              <Play className="mr-2 h-4 w-4" />
+              {runBackupMutation.isPending ? "Running..." : "Run Backup Now"}
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" className="rounded-l-none border-l border-primary-foreground/20 px-2" disabled={runBackupMutation.isPending}>
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setCloneDialogOpen(true)}>
+                  <DownloadCloud className="mr-2 h-4 w-4 text-muted-foreground" />
+                  Backup from other Source
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Card className="hover:border-primary/50 transition-all">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Database Type</CardTitle>
+            <Database className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{config.databaseType}</div>
+          </CardContent>
+        </Card>
+        <Card className="hover:border-primary/50 transition-all">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Host Address</CardTitle>
+            <Server className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-lg font-bold truncate tracking-tight">{config.host}:{config.port}</div>
+          </CardContent>
+        </Card>
+        <Card className="hover:border-primary/50 transition-all">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Schema</CardTitle>
+            <MapPin className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{schemaNameFromUrl}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-7">
+        <Card className="col-span-1 lg:col-span-3 hover:border-primary/50 transition-all">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Connection Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-2">
+              <User className="h-4 w-4 text-muted-foreground" />
+              <span className="font-medium">Username:</span>
+              <span>{config.username}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Lock className="h-4 w-4 text-muted-foreground" />
+              <span className="font-medium">Password:</span>
+              <span>••••••••</span>
+            </div>
+            {config.options && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Settings className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">Extra Options:</span>
+                </div>
+                <pre className="bg-muted p-2 rounded text-[10px] overflow-auto max-h-[150px]">
+                  {JSON.stringify(config.options, null, 2)}
+                </pre>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="col-span-1 lg:col-span-4">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Recent Backups</CardTitle>
+                <CardDescription>History of the last 10 backup attempts.</CardDescription>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => queryClient.invalidateQueries({ queryKey: ["backup-config", id] })}
+              >
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {(config.backups || []).length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground border rounded-lg border-dashed">
+                  No backups recorded yet.
+                </div>
+              ) : (
+                config.backups.filter((b: any) => b.fileName?.startsWith(schemaNameFromUrl) || b.fileName?.startsWith(`${config.databaseName.split('/')[0]}_${schemaNameFromUrl}`)).map((backup: any) => (
+                  <div key={backup.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border rounded-lg hover:bg-muted/30 transition-colors gap-4">
+                    <div className="flex items-start gap-4">
+                      <div className="mt-1">
+                        {backup.status === "SUCCESS" ? (
+                          <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                        ) : backup.status === "FAILED" ? (
+                          <XCircle className="h-5 w-5 text-destructive" />
+                        ) : (
+                          <Clock className="h-5 w-5 text-muted-foreground animate-pulse" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium truncate">{backup.fileName || `backup_${backup.id.slice(0, 8)}`}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {new Date(backup.createdAt).toLocaleString()}
+                        </p>
+                        {backup.error && (
+                          <p className="text-xs text-destructive mt-1 font-medium italic line-clamp-2">
+                            Error: {backup.error}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between sm:justify-end gap-3 border-t sm:border-0 pt-3 sm:pt-0">
+                      <div className="flex items-center gap-2">
+                        {backup.fileSize && (
+                          <span className="text-xs font-medium text-muted-foreground">
+                            {(Number(backup.fileSize) / 1024 / 1024).toFixed(2)} MB
+                          </span>
+                        )}
+                        <Badge variant={backup.status === "SUCCESS" ? "default" : "destructive"} className="text-[10px] px-1.5 py-0 h-5">
+                          {backup.status}
+                        </Badge>
+                      </div>
+                      
+                      {backup.status === "SUCCESS" && (
+                        <div className="flex gap-1">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-7 w-7"
+                            onClick={() => window.open(`${API_ROUTES.BACKUP}/download/${backup.id}`)}
+                            title="Download Backup"
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-7 w-7 text-orange-500 hover:text-orange-600 hover:bg-orange-50"
+                            onClick={() => setRollbackLogId(backup.id)}
+                            title="Rollback (Delete Schema)"
+                            disabled={rollbackMutation.isPending}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-7 w-7 text-blue-500 hover:text-blue-600 hover:bg-blue-50"
+                            onClick={() => setRestoreLogId(backup.id)}
+                            title="Restore to Database"
+                            disabled={restoreMutation.isPending}
+                          >
+                            <RefreshCw className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Re-use other components like AlertDialogs here if needed */}
+    </div>
+  );
+}

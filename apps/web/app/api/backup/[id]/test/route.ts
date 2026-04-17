@@ -72,12 +72,18 @@ export async function POST(
 
         const pg = await import('pg');
         const { Client } = pg.default;
+        
+        let dbName = config.databaseName;
+        if (dbName.includes('/')) {
+          dbName = dbName.split('/')[0] || dbName;
+        }
+
         const pgClient = new Client({
           host: config.host,
           port: config.port,
           user: config.username,
           password: config.password,
-          database: config.databaseName,
+          database: dbName,
           ssl: ssl,
           connectionTimeoutMillis: 10000,
         });

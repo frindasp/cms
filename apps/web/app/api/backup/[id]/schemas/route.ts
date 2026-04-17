@@ -68,7 +68,7 @@ export async function GET(
           port: config.port,
           user: config.username,
           password: config.password,
-          database: config.databaseName,
+          database: config.databaseName.split('/')[0] || config.databaseName,
           ssl: ssl,
         });
         await pgClient.connect();
@@ -154,7 +154,7 @@ export async function DELETE(
           port: config.port,
           user: config.username,
           password: config.password,
-          database: config.databaseName,
+          database: config.databaseName.split('/')[0] || config.databaseName,
           ssl: ssl,
         });
         await pgClient.connect();

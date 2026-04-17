@@ -210,7 +210,14 @@ export default function BackupListPage() {
         totalCount={data?.total || 0}
         onPageChange={setPage}
         isLoading={isLoading}
-        onRowClick={(row) => window.open(APP_ROUTES.ADMIN.BACKUP.DETAIL.replace("[id]", row.id), '_blank')}
+        onRowClick={(row) => {
+          let url = APP_ROUTES.ADMIN.BACKUP.DETAIL.replace("[id]", row.id);
+          if (row.databaseType === "SUPABASE" && row.databaseName.includes('/')) {
+            const schema = row.databaseName.split('/')[1] || 'public';
+            url = `/admin/backup/${row.id}/schemas/${schema}`;
+          }
+          window.open(url, '_blank');
+        }}
       />
 
 

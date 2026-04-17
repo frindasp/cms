@@ -36,6 +36,13 @@ export async function POST(
     })
 
     if (!targetConfig) {
+      // For SUPABASE, we use the db/schema format
+      let finalDatabaseName = targetDbName;
+      if (sourceConfig.databaseType === "SUPABASE") {
+        const baseDb = sourceConfig.databaseName.split('/')[0] || sourceConfig.databaseName;
+        finalDatabaseName = `${baseDb}/${targetDbName}`;
+      }
+
       // Create new config based on source but with new database name
       targetConfig = await prisma.backupConfig.create({
         data: {
@@ -43,7 +50,7 @@ export async function POST(
           databaseType: sourceConfig.databaseType,
           host: sourceConfig.host,
           port: sourceConfig.port,
-          databaseName: targetDbName,
+          databaseName: finalDatabaseName,
           username: sourceConfig.username,
           password: sourceConfig.password,
           options: sourceConfig.options as any,

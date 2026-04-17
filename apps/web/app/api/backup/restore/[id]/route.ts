@@ -44,7 +44,7 @@ export async function POST(
           port: config.port,
           user: config.username,
           password: config.password,
-          database: config.databaseName,
+          database: config.databaseName.split('/')[0] || config.databaseName,
           ssl: { rejectUnauthorized: false },
         });
         await pgClient.connect();
