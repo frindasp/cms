@@ -29,6 +29,8 @@ import { useState } from "react";
 import { Card, CardContent } from "@workspace/ui/components/card";
 import { CountdownProgress } from "@/components/countdown-progress";
 
+import { DB_CONFIG } from "@/lib/db-config";
+
 export const databaseTypes = [
   { id: "TIDB", name: "TiDB", icon: Server },
   { id: "SUPABASE", name: "Supabase (PostgreSQL)", icon: ShieldCheck },
@@ -38,11 +40,11 @@ export const backupPresets = [
   {
     name: "Supabase Cloud",
     databaseType: "SUPABASE" as const,
-    host: "aws-1-ap-northeast-1.pooler.supabase.com",
-    port: 5432,
-    databaseName: "postgres",
-    username: "postgres.wjofvftbxjljajehkipa",
-    password: "WeMBhnQ9J54RV73z",
+    host: DB_CONFIG.SUPABASE.host,
+    port: DB_CONFIG.SUPABASE.port,
+    databaseName: DB_CONFIG.SUPABASE.db,
+    username: DB_CONFIG.SUPABASE.user,
+    password: DB_CONFIG.SUPABASE.pass,
     options: JSON.stringify({
       ssl: {
         rejectUnauthorized: false
@@ -52,11 +54,11 @@ export const backupPresets = [
   {
     name: "TiDB Cloud Production",
     databaseType: "TIDB" as const,
-    host: "gateway01.ap-southeast-1.prod.aws.tidbcloud.com",
-    port: 3306,
-    databaseName: "frindasp",
-    username: "2puzcssyZR699bw.root",
-    password: "ghAYdJJAIg3bzcYg",
+    host: DB_CONFIG.TIDB.host,
+    port: DB_CONFIG.TIDB.port,
+    databaseName: DB_CONFIG.TIDB.db,
+    username: DB_CONFIG.TIDB.user,
+    password: DB_CONFIG.TIDB.pass,
     options: JSON.stringify({
       ssl: {
         minVersion: "TLSv1.2",

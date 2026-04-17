@@ -1,5 +1,9 @@
 import { PrismaClient } from "@prisma/client";
 import * as bcrypt from "bcryptjs";
+import * as dotenv from "dotenv";
+import * as path from "path";
+
+dotenv.config({ path: path.join(__dirname, "../../.env") });
 
 const prisma = new PrismaClient();
 
@@ -168,11 +172,11 @@ async function main() {
       data: {
         name: "TiDB Cloud Production",
         databaseType: "TIDB",
-        host: "gateway01.ap-southeast-1.prod.aws.tidbcloud.com",
-        port: 3306,
-        databaseName: "frindasp",
-        username: "2puzcssyZR699bw.root",
-        password: "ghAYdJJAIg3bzcYg",
+        host: process.env.NEXT_PUBLIC_TIDB_HOST || "gateway01.ap-southeast-1.prod.aws.tidbcloud.com",
+        port: parseInt(process.env.NEXT_PUBLIC_TIDB_PORT || "3306"),
+        databaseName: process.env.NEXT_PUBLIC_TIDB_DB || "frindasp",
+        username: process.env.NEXT_PUBLIC_TIDB_USER || "2puzcssyZR699bw.root",
+        password: process.env.NEXT_PUBLIC_TIDB_PASS || "ghAYdJJAIg3bzcYg",
         options: {
           ssl: {
             minVersion: "TLSv1.2",

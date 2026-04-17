@@ -1,25 +1,29 @@
 import mysql from 'mysql2/promise';
 import pg from 'pg';
+import * as dotenv from 'dotenv';
+import path from 'path';
+
+dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const presets = [
   {
     name: "Supabase Cloud",
     type: "SUPABASE",
-    host: "aws-1-ap-northeast-1.pooler.supabase.com",
-    port: 5432,
-    db: "postgres",
-    user: "postgres.wjofvftbxjljajehkipa",
-    pass: "WeMBhnQ9J54RV73z",
+    host: process.env.NEXT_PUBLIC_SUPABASE_HOST || "aws-1-ap-northeast-1.pooler.supabase.com",
+    port: parseInt(process.env.NEXT_PUBLIC_SUPABASE_PORT || "5432"),
+    db: process.env.NEXT_PUBLIC_SUPABASE_DB || "postgres",
+    user: process.env.NEXT_PUBLIC_SUPABASE_USER || "postgres.wjofvftbxjljajehkipa",
+    pass: process.env.NEXT_PUBLIC_SUPABASE_PASS || "WeMBhnQ9J54RV73z",
     options: { ssl: { rejectUnauthorized: false } }
   },
   {
     name: "TiDB Cloud Production",
     type: "TIDB",
-    host: "gateway01.ap-southeast-1.prod.aws.tidbcloud.com",
-    port: 3306,
-    db: "frindasp",
-    user: "2puzcssyZR699bw.root",
-    pass: "ghAYdJJAIg3bzcYg",
+    host: process.env.NEXT_PUBLIC_TIDB_HOST || "gateway01.ap-southeast-1.prod.aws.tidbcloud.com",
+    port: parseInt(process.env.NEXT_PUBLIC_TIDB_PORT || "3306"),
+    db: process.env.NEXT_PUBLIC_TIDB_DB || "frindasp",
+    user: process.env.NEXT_PUBLIC_TIDB_USER || "2puzcssyZR699bw.root",
+    pass: process.env.NEXT_PUBLIC_TIDB_PASS || "ghAYdJJAIg3bzcYg",
     options: { ssl: { minVersion: "TLSv1.2", rejectUnauthorized: true } }
   }
 ];
