@@ -172,11 +172,11 @@ async function main() {
       data: {
         name: "TiDB Cloud Production",
         databaseType: "TIDB",
-        host: process.env.NEXT_PUBLIC_TIDB_HOST || "gateway01.ap-southeast-1.prod.aws.tidbcloud.com",
-        port: parseInt(process.env.NEXT_PUBLIC_TIDB_PORT || "3306"),
-        databaseName: process.env.NEXT_PUBLIC_TIDB_DB || "frindasp",
-        username: process.env.NEXT_PUBLIC_TIDB_USER || "2puzcssyZR699bw.root",
-        password: process.env.NEXT_PUBLIC_TIDB_PASS || "ghAYdJJAIg3bzcYg",
+        host: process.env.TIDB_HOST!,
+        port: parseInt(process.env.TIDB_PORT!),
+        databaseName: process.env.TIDB_DB!,
+        username: process.env.TIDB_USER!,
+        password: process.env.TIDB_PASS!,
         options: {
           ssl: {
             minVersion: "TLSv1.2",

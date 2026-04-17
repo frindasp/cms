@@ -9,21 +9,21 @@ const presets = [
   {
     name: "Supabase Cloud",
     type: "SUPABASE",
-    host: process.env.NEXT_PUBLIC_SUPABASE_HOST || "aws-1-ap-northeast-1.pooler.supabase.com",
-    port: parseInt(process.env.NEXT_PUBLIC_SUPABASE_PORT || "5432"),
-    db: process.env.NEXT_PUBLIC_SUPABASE_DB || "postgres",
-    user: process.env.NEXT_PUBLIC_SUPABASE_USER || "postgres.wjofvftbxjljajehkipa",
-    pass: process.env.NEXT_PUBLIC_SUPABASE_PASS || "WeMBhnQ9J54RV73z",
+    host: process.env.SUPABASE_HOST!,
+    port: parseInt(process.env.SUPABASE_PORT!),
+    db: process.env.SUPABASE_DB!,
+    user: process.env.SUPABASE_USER!,
+    pass: process.env.SUPABASE_PASS!,
     options: { ssl: { rejectUnauthorized: false } }
   },
   {
     name: "TiDB Cloud Production",
     type: "TIDB",
-    host: process.env.NEXT_PUBLIC_TIDB_HOST || "gateway01.ap-southeast-1.prod.aws.tidbcloud.com",
-    port: parseInt(process.env.NEXT_PUBLIC_TIDB_PORT || "3306"),
-    db: process.env.NEXT_PUBLIC_TIDB_DB || "frindasp",
-    user: process.env.NEXT_PUBLIC_TIDB_USER || "2puzcssyZR699bw.root",
-    pass: process.env.NEXT_PUBLIC_TIDB_PASS || "ghAYdJJAIg3bzcYg",
+    host: process.env.TIDB_HOST!,
+    port: parseInt(process.env.TIDB_PORT!),
+    db: process.env.TIDB_DB!,
+    user: process.env.TIDB_USER!,
+    pass: process.env.TIDB_PASS!,
     options: { ssl: { minVersion: "TLSv1.2", rejectUnauthorized: true } }
   }
 ];
