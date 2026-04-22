@@ -86,11 +86,16 @@ export default function SchemaTablesPage() {
           </div>
         </div>
         <div className="ml-auto flex items-center gap-2">
-          {/* We point back to the original editor if schemaName is compatible or just leave it for now */}
-          <Button variant="outline" asChild>
+          <Button variant="outline" size="sm" asChild>
             <Link href={`/admin/backup/${id}/tables/editor`}>
               <Code className="mr-2 h-4 w-4" />
-              SQL Scripts
+              Scripts
+            </Link>
+          </Button>
+          <Button size="sm" asChild>
+            <Link href={`/admin/backup/${id}/tables/editor/create${config.databaseType === 'postgresql' || config.databaseType === 'supabase' ? `?schema=${schemaName}` : ''}`}>
+              <Plus className="mr-2 h-4 w-4" />
+              New Script
             </Link>
           </Button>
         </div>

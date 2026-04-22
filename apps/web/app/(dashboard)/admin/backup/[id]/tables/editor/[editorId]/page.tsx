@@ -34,6 +34,7 @@ export default function BackupQueryEditPage() {
   const editorId = params.editorId as string
   const router = useRouter()
   const searchParams = useSearchParams()
+  const schema = searchParams.get("schema")
   const queryClient = useQueryClient()
   const editorRef = useRef<any>(null)
   
@@ -57,9 +58,12 @@ export default function BackupQueryEditPage() {
   })
 
   const { data: tables } = useQuery({
-    queryKey: ["backup-tables", id],
+    queryKey: ["backup-tables", id, schema],
     queryFn: async () => {
-      const res = await fetch(`${API_ROUTES.BACKUP}/${id}/tables`)
+      const url = schema 
+        ? `${API_ROUTES.BACKUP}/${id}/tables?name=${schema}`
+        : `${API_ROUTES.BACKUP}/${id}/tables`
+      const res = await fetch(url)
       const json = await res.json()
       return json.data || []
     },

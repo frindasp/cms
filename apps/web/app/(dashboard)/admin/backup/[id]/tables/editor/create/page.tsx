@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { ChevronLeft, Save, Play, Code, Trash, Table as TableIcon } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -18,19 +18,24 @@ import { Badge } from "@workspace/ui/components/badge";
 export default function BackupQueryCreatePage() {
   const params = useParams();
   const id = params.id as string;
+  const searchParams = useSearchParams();
+  const schema = searchParams.get("schema");
   const router = useRouter();
   const monaco = useMonaco();
   const editorRef = useRef<any>(null);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [sql, setSql] = useState("SELECT * FROM users LIMIT 10;");
+  const [sql, setSql] = useState(schema ? `SET search_path TO ${schema};\n\nSELECT * FROM users LIMIT 10;` : "SELECT * FROM users LIMIT 10;");
   const [results, setResults] = useState<any[] | null>(null);
 
   const { data: tables } = useQuery({
-    queryKey: ["backup-tables", id],
+    queryKey: ["backup-tables", id, schema],
     queryFn: async () => {
-      const res = await fetch(`${API_ROUTES.BACKUP}/${id}/tables`);
+      const url = schema 
+        ? `${API_ROUTES.BACKUP}/${id}/tables?name=${schema}`
+        : `${API_ROUTES.BACKUP}/${id}/tables`;
+      const res = await fetch(url);
       const json = await res.json();
       return json.data || [];
     },
