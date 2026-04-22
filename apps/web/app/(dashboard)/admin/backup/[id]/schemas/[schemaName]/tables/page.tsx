@@ -87,13 +87,13 @@ export default function SchemaTablesPage() {
         </div>
         <div className="ml-auto flex items-center gap-2">
           <Button variant="outline" size="sm" asChild>
-            <Link href={`/admin/backup/${id}/tables/editor`}>
+            <Link href={`/admin/backup/${id}/schemas/${schemaName}/tables/editor`}>
               <Code className="mr-2 h-4 w-4" />
               Scripts
             </Link>
           </Button>
           <Button size="sm" asChild>
-            <Link href={`/admin/backup/${id}/tables/editor/create${config.databaseType === 'postgresql' || config.databaseType === 'supabase' ? `?schema=${schemaName}` : ''}`}>
+            <Link href={`/admin/backup/${id}/schemas/${schemaName}/tables/editor/create`}>
               <Plus className="mr-2 h-4 w-4" />
               New Script
             </Link>
