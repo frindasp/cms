@@ -26,20 +26,25 @@ export default function BackupQueryCreatePage() {
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [schemaName, setSchemaName] = useState(schema || ""); // New state for schema
   const [sql, setSql] = useState(schema ? `SET search_path TO ${schema};\n\nSELECT * FROM users LIMIT 10;` : "SELECT * FROM users LIMIT 10;");
   const [results, setResults] = useState<any[] | null>(null);
 
   const { data: tables } = useQuery({
-    queryKey: ["backup-tables", id, schema],
+    queryKey: ["backup-tables", id, schemaName],
     queryFn: async () => {
-      const url = schema 
-        ? `${API_ROUTES.BACKUP}/${id}/tables?name=${schema}`
+      const url = schemaName 
+        ? `${API_ROUTES.BACKUP}/${id}/tables?name=${schemaName}`
         : `${API_ROUTES.BACKUP}/${id}/tables`;
       const res = await fetch(url);
       const json = await res.json();
       return json.data || [];
     },
   });
+
+  useEffect(() => {
+    if (schema) setSchemaName(schema);
+  }, [schema]);
 
   useEffect(() => {
     if (monaco && tables) {
@@ -90,7 +95,7 @@ export default function BackupQueryCreatePage() {
       const res = await fetch(`/api/backup/${id}/queries`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, description, sql }),
+        body: JSON.stringify({ name, description, sql, schemaName }), // Pass schemaName
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create script");
@@ -202,6 +207,15 @@ export default function BackupQueryCreatePage() {
                   placeholder="e.g. Get Recent Users" 
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="schemaName">Database Schema (Optional for PG)</Label>
+                <Input 
+                  id="schemaName" 
+                  placeholder="e.g. public" 
+                  value={schemaName}
+                  onChange={(e) => setSchemaName(e.target.value)}
                 />
               </div>
               <div className="space-y-2">

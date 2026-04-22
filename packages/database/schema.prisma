@@ -272,6 +272,7 @@ model BackupQuery {
   name           String
   description    String?      @db.Text
   sql            String       @db.Text
+  schemaName     String?      // New field to support schema-specific context (PG/Supabase)
   backupConfigId String
   backupConfig   BackupConfig @relation(fields: [backupConfigId], references: [id], onDelete: Cascade)
   createdAt      DateTime     @default(now())

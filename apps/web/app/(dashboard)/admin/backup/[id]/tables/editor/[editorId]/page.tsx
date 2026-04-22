@@ -43,6 +43,7 @@ export default function BackupQueryEditPage() {
 
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
+  const [schemaName, setSchemaName] = useState("") // New state for schema
   const [sql, setSql] = useState("")
   const [results, setResults] = useState<any[] | null>(null)
 
@@ -58,10 +59,10 @@ export default function BackupQueryEditPage() {
   })
 
   const { data: tables } = useQuery({
-    queryKey: ["backup-tables", id, schema],
+    queryKey: ["backup-tables", id, schemaName],
     queryFn: async () => {
-      const url = schema 
-        ? `${API_ROUTES.BACKUP}/${id}/tables?name=${schema}`
+      const url = schemaName 
+        ? `${API_ROUTES.BACKUP}/${id}/tables?name=${schemaName}`
         : `${API_ROUTES.BACKUP}/${id}/tables`
       const res = await fetch(url)
       const json = await res.json()
@@ -74,8 +75,9 @@ export default function BackupQueryEditPage() {
       setName(queryData.name)
       setDescription(queryData.description || "")
       setSql(queryData.sql)
+      setSchemaName(queryData.schemaName || schema || "")
     }
-  }, [queryData])
+  }, [queryData, schema])
 
   useEffect(() => {
     if (monaco && tables) {
@@ -153,7 +155,7 @@ export default function BackupQueryEditPage() {
       const res = await fetch(`/api/backup/query/${editorId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, description, sql }),
+        body: JSON.stringify({ name, description, sql, schemaName }), // Pass schemaName
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Failed to update script")
@@ -268,7 +270,8 @@ export default function BackupQueryEditPage() {
               {queryData.name}
             </h2>
             <p className="text-sm text-muted-foreground">
-              {queryData.backupConfig.databaseName} @{" "}
+              {queryData.backupConfig.databaseName}
+              {queryData.schemaName ? ` / ${queryData.schemaName}` : ""} @{" "}
               {queryData.backupConfig.host}
             </p>
           </div>
@@ -319,6 +322,15 @@ export default function BackupQueryEditPage() {
                   id="name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="schemaName">Database Schema (Optional for PG)</Label>
+                <Input 
+                  id="schemaName" 
+                  placeholder="e.g. public" 
+                  value={schemaName}
+                  onChange={(e) => setSchemaName(e.target.value)}
                 />
               </div>
               <div className="space-y-2">

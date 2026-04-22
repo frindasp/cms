@@ -145,7 +145,14 @@ export default function BackupQueriesListPage() {
                         <div className="rounded-md bg-primary/10 p-1.5 text-primary">
                           <Code className="h-4 w-4" />
                         </div>
-                        {q.name}
+                        <div className="flex flex-col">
+                          <span>{q.name}</span>
+                          {q.schemaName && (
+                            <span className="text-[10px] text-muted-foreground">
+                              Schema: <span className="text-primary/70">{q.schemaName}</span>
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell className="max-w-[400px] truncate text-muted-foreground">

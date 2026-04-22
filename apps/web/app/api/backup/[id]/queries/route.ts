@@ -38,6 +38,7 @@ export async function POST(
         name: body.name,
         description: body.description,
         sql: body.sql,
+        schemaName: body.schemaName, // New field
         backupConfigId: id,
       },
     });
