@@ -35,7 +35,10 @@ export default function ChatRoom() {
     setConnected(true); // Simplified: Assume client-side Pusher handles connection states
 
     channel.bind("new-message", (message: Message) => {
-      setMessages((prev) => [...prev, message]);
+      setMessages((prev) => {
+        if (prev.some(m => m.id === message.id)) return prev;
+        return [...prev, message];
+      });
     });
 
     // Cleanup on unmount

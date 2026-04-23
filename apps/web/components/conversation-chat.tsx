@@ -275,7 +275,10 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
     const channel = pusherClient.subscribe(channelName);
 
     channel.bind("new-message", (message: Message) => {
-      setMessages((prev) => [...prev, message]);
+      setMessages((prev) => {
+        if (prev.some(m => m.id === message.id)) return prev;
+        return [...prev, message];
+      });
       markAsRead(identifier);
       
       // Mark as delivered if we are the recipient
@@ -309,13 +312,13 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
     });
 
     channel.bind("conversation-status-updated", (data: { conversationId: string; status: "SENT" | "DELIVERED" | "READ" }) => {
-      setMessages(prev => prev.map(m => m.status !== "READ" ? { ...m, status: data.status } : m));
+      setMessages(prev => prev.map(m => (m.status !== "READ" || data.status === "READ") ? { ...m, status: data.status } : m));
     });
 
     return () => {
       pusherClient.unsubscribe(channelName);
     };
-  }, [selectedThread?.id, activeTab]);
+  }, [selectedThread?.id, activeTab, session?.user?.id]);
 
   useEffect(() => {
     if (scrollRef.current) {
