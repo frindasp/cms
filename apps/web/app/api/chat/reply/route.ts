@@ -35,8 +35,8 @@ export async function POST(request: Request) {
     });
 
     const senderName = message.conversation?.adminAlias 
-       ? `Admin - ${message.conversation.adminAlias}`
-       : `Admin - ${message.user?.name || "Support"}`;
+       || message.user?.name 
+       || "Support";
 
     const pusherMessage = {
       ...message,

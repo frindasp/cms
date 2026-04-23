@@ -154,10 +154,11 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
     notificationChannel.bind("conversation-updated", handleUpdate);
 
     const statusChannel = pusherClient.subscribe("user-status");
-    statusChannel.bind("status-changed", (data: { userId: string; isOnline: boolean; lastSeen: string }) => {
+    statusChannel.bind("status-changed", (data: { userId: string; email: string; isOnline: boolean; lastSeen: string }) => {
       setOnlineUsers(prev => ({
         ...prev,
-        [data.userId]: { isOnline: data.isOnline, lastSeen: data.lastSeen }
+        [data.userId]: { isOnline: data.isOnline, lastSeen: data.lastSeen },
+        [data.email]: { isOnline: data.isOnline, lastSeen: data.lastSeen }
       }));
     });
 
@@ -852,24 +853,28 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
                         {selectedThread.userState?.isFavorite && <Star className="h-3 w-3 fill-amber-400 text-amber-400 opacity-80" />}
                     </div>
                   )}
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <p className="text-[10px] text-muted-foreground font-medium opacity-60 truncate">Berbagi dengan {selectedThread.userAlias || selectedThread.name} ({selectedThread.email})</p>
-                    <button onClick={() => {
-                      setUserNickname(selectedThread.userAlias || "");
-                      setAdminNickname(selectedThread.adminAlias || "");
-                      setIsEditingAlias(!isEditingAlias);
-                    }} className="opacity-20 hover:opacity-100 p-0.5">
-                      <UserCircle className="h-3 w-3" />
-                    </button>
-                    {onlineUsers[selectedThread.email] && (
-                      <span className={cn(
-                        "text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1",
-                        onlineUsers[selectedThread.email]?.isOnline ? "bg-green-100 text-green-600 animate-pulse" : "bg-gray-100 text-gray-500"
-                      )}>
-                        {onlineUsers[selectedThread.email]?.isOnline ? "ONLINE" : `LAST SEEN: ${new Date(onlineUsers[selectedThread.email]?.lastSeen || "").toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
-                      </span>
-                    )}
-                  </div>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <p className="text-[10px] text-muted-foreground font-medium opacity-60 truncate">
+                        Berbagi dengan {selectedThread.userAlias || selectedThread.name || selectedThread.email}
+                      </p>
+                      <button onClick={() => {
+                        setUserNickname(selectedThread.userAlias || "");
+                        setAdminNickname(selectedThread.adminAlias || "");
+                        setIsEditingAlias(!isEditingAlias);
+                      }} className="opacity-20 hover:opacity-100 p-0.5">
+                        <UserCircle className="h-3 w-3" />
+                      </button>
+                      {(onlineUsers[selectedThread.email] || selectedThread.isOnline !== undefined) && (
+                        <span className={cn(
+                          "text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1",
+                          (onlineUsers[selectedThread.email]?.isOnline ?? selectedThread.isOnline) ? "bg-green-100 text-green-600 animate-pulse" : "bg-gray-100 text-gray-500"
+                        )}>
+                          {(onlineUsers[selectedThread.email]?.isOnline ?? selectedThread.isOnline) 
+                            ? "ONLINE" 
+                            : `LAST SEEN: ${new Date(onlineUsers[selectedThread.email]?.lastSeen || selectedThread.lastSeen || "").toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                        </span>
+                      )}
+                    </div>
                 </div>
               </div>
               
@@ -894,7 +899,10 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
                    </div>
                  )}
                  <div className="hidden md:flex flex-col items-end mr-4">
-                     <span className="text-[10px] font-bold text-green-500 animate-pulse uppercase tracking-widest leading-none">Live Connection</span>
+                     <span className={cn(
+                        "text-[10px] font-bold uppercase tracking-widest leading-none",
+                        (onlineUsers[selectedThread.email]?.isOnline ?? selectedThread.isOnline) ? "text-green-500 animate-pulse" : "text-muted-foreground"
+                      )}>{(onlineUsers[selectedThread.email]?.isOnline ?? selectedThread.isOnline) ? "Online" : "Offline"}</span>
                      <span className="text-[8px] opacity-40 uppercase">Channel: {selectedThread.id.slice(0,8)}...</span>
                  </div>
                  {/* Quick actions for active thread */}
@@ -977,7 +985,9 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
                       <div className="max-w-full">
                         {!isMe && (
                           <span className="text-[10px] font-bold mb-1 block opacity-50 px-1">
-                            {isAdmin ? `Admin - ${selectedThread?.adminAlias || msg.sender.name || "Support"}` : (selectedThread?.userAlias || msg.sender.name || "Guest")}
+                            {isAdmin 
+                              ? `Admin - ${selectedThread?.adminAlias || msg.sender.name || "Support"}` 
+                              : (selectedThread?.userAlias || msg.sender.name || selectedThread?.email || "Guest")}
                           </span>
                         )}
                         <div className={cn(
