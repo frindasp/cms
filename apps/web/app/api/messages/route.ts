@@ -68,6 +68,7 @@ export async function POST(request: Request) {
         senderId: (session.user as any).id,
         senderEmail: session.user.email,
         isAdmin: true,
+        status: 'SENT',
       },
       include: {
         user: { select: { name: true } },

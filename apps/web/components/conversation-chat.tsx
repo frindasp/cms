@@ -10,7 +10,7 @@ import {
   MessageSquare, Send, Loader2, Search, Edit2, Check, X,
   UserPlus, UserCircle, ChevronLeft,
   MoreVertical, Pin, PinOff, Star, Archive, ArchiveRestore,
-  VolumeX, Bell, CheckCircle2, Trash2, Eraser,
+  VolumeX, Bell, CheckCircle2, Trash2, Eraser, CheckCheck,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -33,6 +33,7 @@ type Message = {
   sender: {
     name: string | null;
   };
+  status?: "SENT" | "DELIVERED" | "READ";
 };
 
 type ThreadSource = "message" | "new-chat";
@@ -59,6 +60,8 @@ type Thread = {
   userAlias?: string | null;
   adminAlias?: string | null;
   userState?: UserState;
+  isOnline?: boolean;
+  lastSeen?: string;
 };
 
 type UserDetail = {
@@ -97,6 +100,9 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
   const [selectedUserEmail, setSelectedUserEmail] = useState("");
   const [newMsgContent, setNewMsgContent] = useState("");
   const [startingChat, setStartingChat] = useState(false);
+  const [typingUsers, setTypingUsers] = useState<Record<string, string[]>>({}); // conversationId -> userNames[]
+  const [onlineUsers, setOnlineUsers] = useState<Record<string, { isOnline: boolean; lastSeen: string }>>({});
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Browser Title Notification
   useEffect(() => {
@@ -147,10 +153,55 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
 
     notificationChannel.bind("conversation-updated", handleUpdate);
 
+    const statusChannel = pusherClient.subscribe("user-status");
+    statusChannel.bind("status-changed", (data: { userId: string; isOnline: boolean; lastSeen: string }) => {
+      setOnlineUsers(prev => ({
+        ...prev,
+        [data.userId]: { isOnline: data.isOnline, lastSeen: data.lastSeen }
+      }));
+    });
+
+    // Notify online
+    fetch("/api/user/status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isOnline: true }),
+    });
+
     return () => {
       pusherClient.unsubscribe("admin-notifications");
+      pusherClient.unsubscribe("user-status");
+      fetch("/api/user/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isOnline: false }),
+      });
     };
   }, [selectedThread?.id, session?.user?.id]);
+
+  const handleTyping = (isTyping: boolean) => {
+    if (!selectedThread) return;
+    fetch("/api/chat/typing", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversationId: selectedThread.id, isTyping }),
+    });
+  };
+
+  const onInputChange = (val: string) => {
+    setInput(val);
+    if (!val) {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      handleTyping(false);
+      return;
+    }
+
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    handleTyping(true);
+    typingTimeoutRef.current = setTimeout(() => {
+      handleTyping(false);
+    }, 3000);
+  };
 
   const markAsRead = async (id: string) => {
     try {
@@ -226,6 +277,39 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
     channel.bind("new-message", (message: Message) => {
       setMessages((prev) => [...prev, message]);
       markAsRead(identifier);
+      
+      // Mark as delivered if we are the recipient
+      if (message.senderId !== (session?.user as any)?.id) {
+        fetch("/api/chat/messages/status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messageId: message.id, status: "DELIVERED" }),
+        });
+      }
+    });
+
+    channel.bind("user-typing", (data: { userId: string; userName: string; conversationId: string }) => {
+      if (data.userId === (session?.user as any)?.id) return;
+      setTypingUsers(prev => {
+        const current = prev[data.conversationId] || [];
+        if (current.includes(data.userName)) return prev;
+        return { ...prev, [data.conversationId]: [...current, data.userName] };
+      });
+    });
+
+    channel.bind("user-stop-typing", (data: { userId: string; userName: string; conversationId: string }) => {
+      setTypingUsers(prev => {
+        const current = prev[data.conversationId] || [];
+        return { ...prev, [data.conversationId]: current.filter(n => n !== data.userName) };
+      });
+    });
+
+    channel.bind("message-status-updated", (data: { messageId: string; status: "SENT" | "DELIVERED" | "READ" }) => {
+      setMessages(prev => prev.map(m => m.id === data.messageId ? { ...m, status: data.status } : m));
+    });
+
+    channel.bind("conversation-status-updated", (data: { conversationId: string; status: "SENT" | "DELIVERED" | "READ" }) => {
+      setMessages(prev => prev.map(m => m.status !== "READ" ? { ...m, status: data.status } : m));
     });
 
     return () => {
@@ -455,8 +539,14 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
                 {thread.name[0]}
               </AvatarFallback>
             </Avatar>
+            {onlineUsers[thread.email] && (
+              <span className={cn(
+                "absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-background",
+                onlineUsers[thread.email]?.isOnline ? "bg-green-500 animate-pulse" : "bg-gray-400"
+              )} />
+            )}
             {thread.userState?.isMuted && (
-              <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-0.5 border border-border">
+              <div className="absolute -top-1 -right-1 bg-background rounded-full p-0.5 border border-border">
                 <VolumeX className="h-2 w-2 text-muted-foreground" />
               </div>
             )}
@@ -475,7 +565,20 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
               </span>
             </div>
             <p className={cn("text-[11px] truncate mt-0.5", thread.unreadCount > 0 ? "text-primary font-bold" : "text-muted-foreground opacity-60")}>
-                {thread.adminAlias ? `[${thread.adminAlias}] ` : ""}{thread.lastMessage}
+                {(typingUsers[thread.id]?.length ?? 0) > 0 ? (
+                  <span className="flex items-center gap-1 text-primary animate-pulse font-bold italic">
+                    <span className="flex gap-0.5">
+                      <span className="w-1 h-1 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                      <span className="w-1 h-1 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                      <span className="w-1 h-1 bg-primary rounded-full animate-bounce"></span>
+                    </span>
+                    {typingUsers[thread.id]?.[0]} sedang mengetik...
+                  </span>
+                ) : (
+                  <>
+                    {thread.adminAlias ? `[${thread.adminAlias}] ` : ""}{thread.lastMessage}
+                  </>
+                )}
             </p>
             <div className="flex items-center justify-between mt-2">
               <div className="flex items-center gap-2">
@@ -755,6 +858,14 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
                     }} className="opacity-20 hover:opacity-100 p-0.5">
                       <UserCircle className="h-3 w-3" />
                     </button>
+                    {onlineUsers[selectedThread.email] && (
+                      <span className={cn(
+                        "text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1",
+                        onlineUsers[selectedThread.email]?.isOnline ? "bg-green-100 text-green-600 animate-pulse" : "bg-gray-100 text-gray-500"
+                      )}>
+                        {onlineUsers[selectedThread.email]?.isOnline ? "ONLINE" : `LAST SEEN: ${new Date(onlineUsers[selectedThread.email]?.lastSeen || "").toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -883,6 +994,17 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
                          <span className="text-[9px]">
                             {new Date(msg.createdAt).toLocaleString([], { hour: "2-digit", minute: "2-digit" })}
                          </span>
+                         {isAdmin && (
+                            <span className="flex items-center ml-1">
+                              {msg.status === "READ" ? (
+                                <CheckCheck className="h-3 w-3 text-blue-500" />
+                              ) : msg.status === "DELIVERED" ? (
+                                <CheckCheck className="h-3 w-3 text-muted-foreground" />
+                              ) : (
+                                <Check className="h-3 w-3 text-muted-foreground" />
+                              )}
+                            </span>
+                          )}
                       </div>
                     </div>
                   );
@@ -895,7 +1017,7 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
                     <Input
                       placeholder="Ketik pesan..."
                       value={input}
-                      onChange={(e) => setInput(e.target.value)}
+                      onChange={(e) => onInputChange(e.target.value)}
                       disabled={loading}
                       className="flex-1 rounded-2xl px-5 h-12 border-primary/10 focus-visible:ring-primary/20 bg-background/50 backdrop-blur-sm transition-all group-hover:border-primary/30"
                     />

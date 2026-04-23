@@ -14,6 +14,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       update: { isRead: true },
       create: { conversationId: id, userId: adminId, isRead: true }
     });
+
+    // Also update all messages in this conversation to READ
+    await prisma.message.updateMany({
+      where: { conversationId: id, status: { not: 'READ' } },
+      data: { status: 'READ', isRead: true }
+    });
+
+    // Trigger Pusher notification for the recipient
+    const { pusherServer } = await import("@/lib/pusher");
+    await pusherServer.trigger(`conversation-${id}`, "conversation-status-updated", {
+      conversationId: id,
+      status: "READ",
+    });
+
     return ApiResponse.success({ message: "Marked as read" });
   } catch (error) {
     return ApiResponse.internalError(error);

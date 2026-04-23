@@ -53,6 +53,8 @@ model User {
   updatedAt           DateTime              @updatedAt
   twoFactorEnabled    Boolean               @default(false)
   mfaDismissedAt      DateTime?
+  isOnline            Boolean               @default(false)
+  lastSeen            DateTime              @default(now())
   Authenticator       Authenticator[]
   HistoryActivityUser HistoryActivityUser[]
   messages            Message[]
@@ -78,6 +80,12 @@ model Conversation {
   readStates ConversationReadState[]
 }
 
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+}
+
 model Message {
   id             String        @id @default(cuid())
   content        String        @db.Text
@@ -88,6 +96,7 @@ model Message {
   senderEmail    String?
   conversationId String?
   isRead         Boolean       @default(false)
+  status         MessageStatus @default(SENT)
 
   conversation   Conversation? @relation(fields: [conversationId], references: [id])
   user           User?         @relation(fields: [senderId], references: [id])

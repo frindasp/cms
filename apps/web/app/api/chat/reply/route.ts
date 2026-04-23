@@ -21,6 +21,7 @@ export async function POST(request: Request) {
         senderId: (session.user as any).id,
         conversationId,
         isAdmin: true,
+        status: 'SENT',
       },
       include: {
         user: { select: { name: true } },
