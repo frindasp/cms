@@ -16,7 +16,10 @@ export const authConfig = {
         if (!credentials?.email || !credentials?.password) return null
 
         const users = await prisma.user.findMany({
-          where: { email: credentials.email as string },
+          where: { 
+            email: credentials.email as string,
+            role: { name: { in: ["ADMIN", "Admin"] } },
+          },
           include: { role: true, UserImage: true },
         })
 
@@ -45,10 +48,12 @@ export const authConfig = {
   callbacks: {
     authorized({ auth, request: { nextUrl } }: any) {
       const isLoggedIn = !!auth?.user
+      const userRole = (auth?.user as any)?.role?.toUpperCase?.()
+      const isAdmin = userRole === "ADMIN"
       const isOnAdmin = nextUrl.pathname.startsWith("/admin")
 
       if (isOnAdmin) {
-        if (isLoggedIn) return true
+        if (isLoggedIn && isAdmin) return true
         return false // Redirects automatically to pages.signIn with callbackUrl
       }
       return true
