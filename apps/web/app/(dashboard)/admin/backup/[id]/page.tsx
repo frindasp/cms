@@ -39,6 +39,7 @@ import { CountdownProgress } from "@/components/countdown-progress";
 import { API_ROUTES } from "@/lib/constants";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@workspace/ui/components/card";
 import { Button } from "@workspace/ui/components/button";
+import { Combobox } from "@workspace/ui/components/combobox";
 import { Badge } from "@workspace/ui/components/badge";
 import { PasswordInput } from "@workspace/ui/components/password-input";
 import { 
@@ -472,14 +473,17 @@ export default function BackupDetailPage() {
           <CardContent>
             {editingSection === 'type' ? (
               <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
-                <select 
-                  className="w-full bg-background border rounded px-2 py-1 text-sm h-9"
+                <Combobox
+                  options={[
+                    { value: "TIDB", label: "TiDB" },
+                    { value: "SUPABASE", label: "Supabase" },
+                  ]}
                   value={editValues.databaseType}
-                  onChange={(e) => setEditValues({ ...editValues, databaseType: e.target.value })}
-                >
-                  <option value="TIDB">TiDB</option>
-                  <option value="SUPABASE">Supabase</option>
-                </select>
+                  onChange={(val) => setEditValues({ ...editValues, databaseType: val })}
+                  placeholder="Pilih database type..."
+                  searchPlaceholder="Cari tipe database..."
+                  className="h-9"
+                />
                 <div className="flex justify-end gap-1">
                   <Button size="icon" variant="ghost" onClick={() => setEditingSection(null)} className="h-7 w-7"><X className="h-3 w-3" /></Button>
                   <Button size="icon" variant="secondary" onClick={handleSave} className="h-7 w-7" disabled={updateMutation.isPending}><Save className="h-3 w-3" /></Button>

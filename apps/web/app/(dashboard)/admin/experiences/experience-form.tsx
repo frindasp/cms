@@ -7,6 +7,7 @@ import { computePeriodLabel } from "@/lib/period-label"
 import { SkillCombobox } from "@/components/skill-combobox"
 import { ExperienceImageUploader } from "@/components/experience-image-uploader"
 import { Button } from "@workspace/ui/components/button"
+import { Combobox } from "@workspace/ui/components/combobox"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import { Textarea } from "@workspace/ui/components/textarea"
@@ -186,16 +187,15 @@ export function ExperienceForm({ initial, mode }: ExperienceFormProps) {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="type">Employment Type</Label>
-              <select
+              <Combobox
                 id="type"
+                options={employmentTypes.map((t) => ({ value: t, label: t }))}
                 value={form.type}
-                onChange={(e) => set("type", e.target.value)}
-                className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
-              >
-                {employmentTypes.map((t) => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
-              </select>
+                onChange={(val) => set("type", val)}
+                placeholder="Pilih tipe pekerjaan..."
+                searchPlaceholder="Cari tipe pekerjaan..."
+                className="h-9"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="order">Display Order</Label>
