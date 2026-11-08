@@ -32,7 +32,7 @@ export default async function PortfolioDetailPage({
   if (!portfolio) notFound()
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 w-full">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" asChild>

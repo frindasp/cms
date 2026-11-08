@@ -146,7 +146,7 @@ export function PortfolioForm({ mode, initial }: PortfolioFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl pb-20">
+    <form onSubmit={handleSubmit} className="space-y-6 w-full pb-20">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" asChild>
           <Link href="/admin/portfolios">
