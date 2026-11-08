@@ -55,6 +55,7 @@ export const authConfig = {
     },
     async jwt({ token, user }: any) {
       if (user) {
+        token.id = (user as any).id
         token.role = (user as any).role
         token.picture = (user as any).image
       }
@@ -62,6 +63,7 @@ export const authConfig = {
     },
     async session({ session, token }: any) {
       if (session.user) {
+        ;(session.user as any).id = token.id || token.sub
         ;(session.user as any).role = token.role
         if (token.picture) {
           session.user.image = token.picture

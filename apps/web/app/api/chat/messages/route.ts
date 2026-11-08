@@ -48,18 +48,47 @@ export async function GET(request: Request) {
       orderBy: { createdAt: "asc" }
     });
 
+    // Fallback: If an admin message has no senderId/user attached, find the admin user by senderEmail
+    const adminEmailsToLookup = Array.from(
+      new Set(
+        messages
+          .filter(m => m.isAdmin && !m.user && m.senderEmail)
+          .map(m => m.senderEmail as string)
+      )
+    );
+
+    const adminUsersMap = new Map<string, any>();
+    if (adminEmailsToLookup.length > 0) {
+      const fallbackAdmins = await prisma.user.findMany({
+        where: {
+          email: { in: adminEmailsToLookup },
+          role: { name: { in: ["ADMIN", "Admin"] } }
+        },
+        select: {
+          name: true,
+          email: true,
+          role: { select: { name: true } },
+          UserImage: { select: { imageUrl: true } }
+        }
+      });
+      for (const a of fallbackAdmins) {
+        adminUsersMap.set(a.email, a);
+      }
+    }
+
     const normalizedMessages = messages.map(m => {
         const isSenderAdmin = m.isAdmin;
-        let senderName = m.user?.name || m.senderEmail || "Guest";
+        const msgUser = m.user || (isSenderAdmin && m.senderEmail ? adminUsersMap.get(m.senderEmail) : null);
+        let senderName = msgUser?.name || m.senderEmail || "Guest";
         
         if (isSenderAdmin) {
           if (m.conversation?.adminAlias) {
             senderName = `Admin - ${m.conversation.adminAlias}`;
           } else {
-            senderName = formatAdminSender(m.user?.role?.name, m.user?.name, m.user?.email || m.senderEmail);
+            senderName = formatAdminSender(msgUser?.role?.name, msgUser?.name, msgUser?.email || m.senderEmail);
           }
         } else {
-          senderName = m.conversation?.userAlias || m.user?.name || "User";
+          senderName = m.conversation?.userAlias || msgUser?.name || "User";
         }
         
         return {
@@ -67,7 +96,7 @@ export async function GET(request: Request) {
           senderRole: isSenderAdmin ? "admin" : "user",
           sender: { 
             name: senderName,
-            imageUrl: m.user?.UserImage?.imageUrl || null
+            imageUrl: msgUser?.UserImage?.imageUrl || null
           }
         };
     });

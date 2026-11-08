@@ -24,17 +24,29 @@ export async function POST(request: Request) {
   if (!session?.user) return ApiResponse.unauthorized();
 
   try {
-    const { email, content, conversationId } = await request.json();
+    const { content, conversationId } = await request.json();
 
     if (!content || !conversationId) {
       return ApiResponse.error("Content and conversationId are required", 400);
     }
 
+    let adminId = (session.user as any).id;
+    if (!adminId && session.user.email) {
+      const adminUser = await prisma.user.findFirst({
+        where: {
+          email: session.user.email,
+          role: { name: { in: ["ADMIN", "Admin"] } },
+        },
+        select: { id: true },
+      });
+      if (adminUser) adminId = adminUser.id;
+    }
+
     const message = await prisma.message.create({
       data: {
         content,
-        senderEmail: email || session.user.email,
-        senderId: (session.user as any).id,
+        senderEmail: session.user.email,
+        senderId: adminId || null,
         conversationId,
         isAdmin: true,
         status: 'SENT',
