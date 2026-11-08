@@ -96,7 +96,7 @@ export function BackupForm({ initialData, onSubmit, isLoading }: BackupFormProps
   const [success, setSuccess] = useState<boolean>(false);
 
   const form = useForm<BackupFormValues>({
-    resolver: zodResolver(backupSchema),
+    resolver: zodResolver(backupSchema) as any,
     defaultValues: {
       name: initialData?.name || "",
       databaseType: initialData?.databaseType || "TIDB",

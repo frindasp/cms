@@ -2,26 +2,29 @@
   "name": "frindasp-cms",
   "version": "0.0.1",
   "private": true,
-  "packageManager": "npm@11.9.0",
+  "packageManager": "npm@12.2.2",
   "scripts": {
     "build": "npm i && turbo build",
     "dev": "turbo dev -- --port 3026",
     "lint": "turbo lint",
     "format": "turbo format",
-    "typecheck": "turbo typecheck"
+    "typecheck": "turbo typecheck",
+    "update:all": "npx -y npm-check-updates --deep --reject prisma,@prisma/client,eslint,@eslint/js,typescript,@tanstack/react-table -u && npm install"
   },
   "devDependencies": {
     "@prisma/client": "^6.19.2",
-    "@types/bcryptjs": "^2.4.6",
+    "@types/bcryptjs": "^3.0.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "@workspace/eslint-config": "*",
     "@workspace/typescript-config": "*",
     "bcryptjs": "^3.0.3",
-    "prettier": "^3.8.1",
-    "prettier-plugin-tailwindcss": "^0.7.2",
+    "prettier": "^3.9.10",
+    "prettier-plugin-tailwindcss": "^0.8.1",
     "prisma": "^6.19.2",
     "ts-node": "^10.9.2",
-    "turbo": "^2.8.17",
-    "typescript": "5.9.3"
+    "turbo": "^2.11.10",
+    "typescript": "^6.0.3"
   },
   "workspaces": [
     "apps/*",
