@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     prisma.user.findMany({
       skip,
       take: limit,
-      include: { role: true },
+      include: { role: true, UserImage: true },
       orderBy: { name: "asc" },
     }),
     prisma.user.count(),

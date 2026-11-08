@@ -219,8 +219,16 @@ export function AppSidebar() {
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-medium">
-                {session?.user?.name?.[0] || "U"}
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-medium overflow-hidden">
+                {session?.user?.image ? (
+                  <img
+                    src={session.user.image}
+                    alt={session.user.name || "Avatar"}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  session?.user?.name?.[0] || "U"
+                )}
               </div>
               <div className="flex flex-col items-start text-sm leading-tight group-data-[collapsible=icon]:hidden">
                 <span className="font-semibold truncate w-32">

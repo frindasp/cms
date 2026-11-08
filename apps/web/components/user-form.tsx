@@ -24,14 +24,15 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@workspace/ui/components/alert";
-import { AlertCircle, CheckCircle2 } from "lucide-react";
-import { useState } from "react";
+import { AlertCircle, CheckCircle2, Upload, Loader2, User as UserIcon } from "lucide-react";
+import { useState, useRef } from "react";
 
 const userSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters").optional().or(z.literal("")),
   roleId: z.string().min(1, "Please select a role"),
+  avatarUrl: z.string().optional(),
 });
 
 type UserFormValues = z.infer<typeof userSchema>;
@@ -45,6 +46,11 @@ interface UserFormProps {
 export function UserForm({ initialData, onSubmit, isLoading }: UserFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<boolean>(false);
+  const [avatarPreview, setAvatarPreview] = useState<string>(
+    initialData?.UserImage?.imageUrl || ""
+  );
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const { data: roles } = useQuery({
     queryKey: ["roles"],
@@ -61,8 +67,44 @@ export function UserForm({ initialData, onSubmit, isLoading }: UserFormProps) {
       email: initialData?.email || "",
       password: "",
       roleId: initialData?.roleId || "",
+      avatarUrl: initialData?.UserImage?.imageUrl || "",
     },
   });
+
+  const handleAvatarFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingAvatar(true);
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve((reader.result as string).split(",")[1]!);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          file: base64,
+          fileName: file.name,
+          folder: "/avatars",
+        }),
+      });
+
+      if (!res.ok) throw new Error("Upload failed");
+      const data = await res.json();
+      setAvatarPreview(data.url);
+      form.setValue("avatarUrl", data.url);
+      toast.success("Avatar image uploaded");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to upload avatar");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
 
   return (
     <Form {...form}>
@@ -102,6 +144,60 @@ export function UserForm({ initialData, onSubmit, isLoading }: UserFormProps) {
             </AlertDescription>
           </Alert>
         )}
+
+        {/* Avatar Upload */}
+        <div className="flex items-center gap-4 p-3 rounded-lg border bg-muted/20">
+          <input
+            type="file"
+            ref={avatarInputRef}
+            onChange={handleAvatarFile}
+            accept="image/*"
+            className="hidden"
+          />
+          <div className="relative h-14 w-14 rounded-full bg-muted border overflow-hidden flex items-center justify-center shrink-0">
+            {avatarPreview ? (
+              <img src={avatarPreview} alt="Avatar Preview" className="h-full w-full object-cover" />
+            ) : (
+              <UserIcon className="h-6 w-6 text-muted-foreground" />
+            )}
+            {uploadingAvatar && (
+              <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              </div>
+            )}
+          </div>
+          <div className="flex-1 space-y-1">
+            <p className="text-xs font-semibold">Avatar Image (ImageKit)</p>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={uploadingAvatar}
+                className="h-8 text-xs"
+              >
+                <Upload className="mr-1.5 h-3.5 w-3.5" />
+                Upload Foto
+              </Button>
+              {avatarPreview && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setAvatarPreview("");
+                    form.setValue("avatarUrl", "");
+                  }}
+                  className="h-8 text-xs text-destructive hover:bg-destructive/10"
+                >
+                  Hapus
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+
         <FormField
           control={form.control}
           name="name"

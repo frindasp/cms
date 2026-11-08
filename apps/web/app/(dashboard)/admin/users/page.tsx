@@ -33,6 +33,9 @@ type User = {
     id: string;
     name: string;
   };
+  UserImage?: {
+    imageUrl: string;
+  } | null;
   createdAt: string;
 };
 
@@ -146,12 +149,21 @@ export default function UsersPage() {
       cell: ({ row }) => {
         const user = row.original;
         return (
-          <Link
-            href={`/admin/users/${user.id}`}
-            className="hover:underline text-primary font-medium focus:outline-none"
-          >
-            {user.name || "N/A"}
-          </Link>
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center overflow-hidden shrink-0 border text-xs font-semibold">
+              {user.UserImage?.imageUrl ? (
+                <img src={user.UserImage.imageUrl} alt={user.name || "Avatar"} className="h-full w-full object-cover" />
+              ) : (
+                user.name?.[0] || "U"
+              )}
+            </div>
+            <Link
+              href={`/admin/users/${user.id}`}
+              className="hover:underline text-primary font-medium focus:outline-none"
+            >
+              {user.name || "N/A"}
+            </Link>
+          </div>
         );
       },
     },

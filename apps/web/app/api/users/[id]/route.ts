@@ -17,7 +17,7 @@ export async function GET(
   try {
     const user = await prisma.user.findUnique({
       where: { id },
-      include: { role: true },
+      include: { role: true, UserImage: true },
     });
 
     if (!user) {
@@ -43,7 +43,7 @@ export async function PATCH(
 
   try {
     const body = await request.json();
-    const { name, email, password, roleId } = body;
+    const { name, email, password, roleId, avatarUrl } = body;
 
     const data: any = {};
     if (name !== undefined) data.name = name;
@@ -53,10 +53,29 @@ export async function PATCH(
       data.password = await bcrypt.hash(password, 10);
     }
 
+    if (avatarUrl !== undefined) {
+      if (avatarUrl) {
+        await prisma.userImage.upsert({
+          where: { userId: id },
+          update: { imageUrl: avatarUrl, source: "imagekit" },
+          create: {
+            id: `usr-img-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+            userId: id,
+            imageUrl: avatarUrl,
+            source: "imagekit",
+          },
+        });
+      } else {
+        await prisma.userImage.deleteMany({
+          where: { userId: id },
+        });
+      }
+    }
+
     const user = await prisma.user.update({
       where: { id },
       data,
-      include: { role: true },
+      include: { role: true, UserImage: true },
     });
 
     const { password: _, ...sanitizedUser } = user;

@@ -17,7 +17,7 @@ export const authConfig = {
 
         const users = await prisma.user.findMany({
           where: { email: credentials.email as string },
-          include: { role: true },
+          include: { role: true, UserImage: true },
         })
 
         if (!users || users.length === 0) return null
@@ -33,6 +33,7 @@ export const authConfig = {
                     name: user.name,
                     email: user.email,
                     role: user.role.name,
+                    image: user.UserImage?.imageUrl || null,
                 }
             }
         }
@@ -55,12 +56,16 @@ export const authConfig = {
     async jwt({ token, user }: any) {
       if (user) {
         token.role = (user as any).role
+        token.picture = (user as any).image
       }
       return token
     },
     async session({ session, token }: any) {
       if (session.user) {
         ;(session.user as any).role = token.role
+        if (token.picture) {
+          session.user.image = token.picture
+        }
       }
       return session
     },

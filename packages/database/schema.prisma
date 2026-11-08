@@ -7,23 +7,21 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
-
 model ConversationReadState {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   conversationId String
   userId         String
-  lastReadAt     DateTime @default(now())
-  isRead         Boolean  @default(true)
-  isArchived     Boolean  @default(false)
-  isFavorite     Boolean  @default(false)
-  isMuted        Boolean  @default(false)
-  isPinned       Boolean  @default(false)
-
+  lastReadAt     DateTime     @default(now())
+  isRead         Boolean      @default(true)
+  isArchived     Boolean      @default(false)
+  isFavorite     Boolean      @default(false)
+  isMuted        Boolean      @default(false)
+  isPinned       Boolean      @default(false)
   conversation   Conversation @relation(fields: [conversationId], references: [id])
   user           User         @relation(fields: [userId], references: [id])
 
   @@unique([conversationId, userId])
+  @@index([userId], map: "ConversationReadState_userId_fkey")
 }
 
 model WebhookEmail {
@@ -44,46 +42,41 @@ model Role {
 }
 
 model User {
-  id                  String                @id @default(cuid())
+  id                  String                  @id @default(cuid())
   name                String?
   email               String
   password            String
   roleId              String
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime              @updatedAt
-  twoFactorEnabled    Boolean               @default(false)
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  twoFactorEnabled    Boolean                 @default(false)
   mfaDismissedAt      DateTime?
-  isOnline            Boolean               @default(false)
-  lastSeen            DateTime              @default(now())
+  isOnline            Boolean                 @default(false)
+  lastSeen            DateTime                @default(now())
   Authenticator       Authenticator[]
+  readStates          ConversationReadState[]
   HistoryActivityUser HistoryActivityUser[]
   messages            Message[]
   TotpAuthenticator   TotpAuthenticator[]
-  role                Role                  @relation(fields: [roleId], references: [id])
-  readStates          ConversationReadState[]
+  role                Role                    @relation(fields: [roleId], references: [id])
+  UserImage           UserImage?
 
   @@unique([email, roleId])
   @@index([roleId], map: "User_roleId_fkey")
 }
 
 model Conversation {
-  id         String    @id @default(cuid())
+  id         String                  @id @default(cuid())
   email      String
   name       String?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  createdAt  DateTime                @default(now())
+  updatedAt  DateTime                @updatedAt
   roleId     String?
   title      String?
   adminAlias String?
   userAlias  String?
-  messages   Message[]
   readStates ConversationReadState[]
-}
-
-enum MessageStatus {
-  SENT
-  DELIVERED
-  READ
+  messages   Message[]
 }
 
 model Message {
@@ -91,16 +84,13 @@ model Message {
   content        String        @db.Text
   senderId       String?
   createdAt      DateTime      @default(now())
-
   isAdmin        Boolean       @default(false)
   senderEmail    String?
   conversationId String?
   isRead         Boolean       @default(false)
   status         MessageStatus @default(SENT)
-
   conversation   Conversation? @relation(fields: [conversationId], references: [id])
   user           User?         @relation(fields: [senderId], references: [id])
-
 
   @@index([senderId], map: "Message_senderId_fkey")
   @@index([conversationId], map: "Message_conversationId_fkey")
@@ -117,7 +107,7 @@ model VerificationToken {
 }
 
 model Authenticator {
-  id                   String  @id
+  id                   String  @id @default(cuid())
   credentialID         String  @unique
   userId               String
   publicKey            Bytes
@@ -132,7 +122,7 @@ model Authenticator {
 }
 
 model HistoryActivityUser {
-  id          String   @id
+  id          String   @id @default(cuid())
   userId      String?
   action      String
   description String?  @db.Text
@@ -152,12 +142,12 @@ model HistoryActivityUser {
 }
 
 model TotpAuthenticator {
-  id            String   @id
+  id            String   @id @default(cuid())
   userId        String
   secret        String
   enabled       Boolean  @default(true)
   createdAt     DateTime @default(now())
-  updatedAt     DateTime
+  updatedAt     DateTime @updatedAt
   name          String   @default("Authenticator")
   setupComplete Boolean  @default(false)
   User          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -178,7 +168,7 @@ model Skill {
   id          String       @id @default(cuid())
   name        String       @unique
   createdAt   DateTime     @default(now())
-  experiences Experience[]
+  experiences Experience[] @relation("ExperienceToSkill")
 }
 
 model Experience {
@@ -189,28 +179,28 @@ model Experience {
   startDate   String
   endDate     String?
   location    String
-  skills      Skill[]
   description Json
-  images      ExperienceImage[]
-  portfolios  Portfolio[]
   order       Int               @default(0)
   isActive    Boolean           @default(true)
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
+  images      ExperienceImage[]
+  portfolios  Portfolio[]
+  skills      Skill[]           @relation("ExperienceToSkill")
 }
 
 model ExperienceImage {
   id              String           @id @default(cuid())
   url             String
-  fileId          String?          // Nullable for URL source
-  source          String           @default("imagekit") // "imagekit" or "url"
-  isLogo          Boolean          @default(false)
+  fileId          String?
   caption         String?
   order           Int              @default(0)
   experienceId    String
+  createdAt       DateTime         @default(now())
+  isLogo          Boolean          @default(false)
+  source          String           @default("imagekit")
   experience      Experience       @relation(fields: [experienceId], references: [id], onDelete: Cascade)
   portfolioImages PortfolioImage[]
-  createdAt       DateTime         @default(now())
 
   @@index([experienceId])
 }
@@ -218,62 +208,59 @@ model ExperienceImage {
 model Tag {
   id         String      @id @default(cuid())
   name       String      @unique
-  portfolios Portfolio[]
   createdAt  DateTime    @default(now())
+  portfolios Portfolio[] @relation("PortfolioToTag")
 }
 
 model PortfolioImage {
   id                String           @id @default(cuid())
   url               String
   fileId            String?
-  source            String           @default("imagekit") // "imagekit" or "url"
+  source            String           @default("imagekit")
   isLogo            Boolean          @default(false)
   order             Int              @default(0)
   portfolioId       String
-  portfolio         Portfolio        @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
   experienceImageId String?
-  experienceImage   ExperienceImage? @relation(fields: [experienceImageId], references: [id], onDelete: SetNull)
   createdAt         DateTime         @default(now())
+  experienceImage   ExperienceImage? @relation(fields: [experienceImageId], references: [id])
+  portfolio         Portfolio        @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
 
   @@index([portfolioId])
+  @@index([experienceImageId], map: "PortfolioImage_experienceImageId_fkey")
 }
-
 
 model Portfolio {
   id           String           @id @default(cuid())
   title        String
   description  String?          @db.Text
-  images       PortfolioImage[]
-  tags         Tag[]
   experienceId String?
-  experience   Experience?      @relation(fields: [experienceId], references: [id], onDelete: SetNull)
   order        Int              @default(0)
   isPublished  Boolean          @default(true)
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
+  behanceUrl   String?
+  tools        String?
+  experience   Experience?      @relation(fields: [experienceId], references: [id])
+  images       PortfolioImage[]
+  tags         Tag[]            @relation("PortfolioToTag")
 
   @@index([experienceId])
 }
 
-enum DatabaseType {
-  TIDB
-  SUPABASE
-}
-
 model BackupConfig {
-  id           String       @id @default(cuid())
+  id           String        @id @default(cuid())
   name         String
   databaseType DatabaseType
-  host         String       @db.Text
+  host         String        @db.Text
   port         Int
   databaseName String
-  username     String       @db.Text
-  password     String       @db.Text
-  options      Json?        // For extra fields like bucket name, SSL, etc.
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  backups       BackupLog[]
-  queries       BackupQuery[]
+  username     String        @db.Text
+  password     String        @db.Text
+  options      Json?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  backups      BackupLog[]
+  queries      BackupQuery[]
 }
 
 model BackupQuery {
@@ -281,11 +268,11 @@ model BackupQuery {
   name           String
   description    String?      @db.Text
   sql            String       @db.Text
-  schemaName     String?      // New field to support schema-specific context (PG/Supabase)
   backupConfigId String
-  backupConfig   BackupConfig @relation(fields: [backupConfigId], references: [id], onDelete: Cascade)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+  schemaName     String?
+  backupConfig   BackupConfig @relation(fields: [backupConfigId], references: [id], onDelete: Cascade)
 
   @@index([backupConfigId])
 }
@@ -293,14 +280,34 @@ model BackupQuery {
 model BackupLog {
   id             String       @id @default(cuid())
   backupConfigId String
-  backupConfig   BackupConfig @relation(fields: [backupConfigId], references: [id], onDelete: Cascade)
-  status         String       @default("PENDING") // PENDING, SUCCESS, FAILED
+  status         String       @default("PENDING")
   fileName       String?
   fileSize       BigInt?      @default(0)
   error          String?      @db.Text
   createdAt      DateTime     @default(now())
+  backupConfig   BackupConfig @relation(fields: [backupConfigId], references: [id], onDelete: Cascade)
 
   @@index([backupConfigId])
 }
 
+model UserImage {
+  id        String   @id
+  userId    String   @unique
+  imageUrl  String   @db.Text
+  fileId    String?
+  source    String   @default("imagekit")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
 
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+}
+
+enum DatabaseType {
+  TIDB
+  SUPABASE
+}
