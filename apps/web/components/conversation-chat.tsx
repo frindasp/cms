@@ -32,6 +32,7 @@ type Message = {
   createdAt: string;
   sender: {
     name: string | null;
+    imageUrl?: string | null;
   };
   status?: "SENT" | "DELIVERED" | "READ";
 };
@@ -51,6 +52,7 @@ type Thread = {
   email: string;
   name: string;
   title: string | null;
+  userImage?: string | null;
   lastMessage: string;
   lastMessageAt: string;
   messageCount: number;
@@ -536,12 +538,16 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
         >
           <div className="relative shrink-0">
             <Avatar className="h-10 w-10">
-              <AvatarFallback className={cn(
-                "font-bold text-sm",
-                selectedThread?.id === thread.id ? "bg-primary text-primary-foreground" : "bg-primary/20 text-primary"
-              )}>
-                {thread.name[0]}
-              </AvatarFallback>
+              {thread.userImage ? (
+                <img src={thread.userImage} alt={thread.name} className="h-full w-full object-cover rounded-full" />
+              ) : (
+                <AvatarFallback className={cn(
+                  "font-bold text-sm",
+                  selectedThread?.id === thread.id ? "bg-primary text-primary-foreground" : "bg-primary/20 text-primary"
+                )}>
+                  {thread.name[0]}
+                </AvatarFallback>
+              )}
             </Avatar>
             {onlineUsers[thread.email] && (
               <span className={cn(
@@ -824,7 +830,11 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
                   <ChevronLeft className="h-5 w-5" />
                 </Button>
                 <Avatar className="h-8 w-8 md:h-10 md:w-10 border-2 border-primary/10">
-                  <AvatarFallback className="bg-primary/20 text-primary font-bold">{selectedThread.name?.[0] || "U"}</AvatarFallback>
+                  {selectedThread.userImage ? (
+                    <img src={selectedThread.userImage} alt={selectedThread.name} className="h-full w-full object-cover rounded-full" />
+                  ) : (
+                    <AvatarFallback className="bg-primary/20 text-primary font-bold">{selectedThread.name?.[0] || "U"}</AvatarFallback>
+                  )}
                 </Avatar>
                 <div className="w-full max-w-[200px] md:max-w-[400px]">
                   {isEditingTitle ? (
@@ -984,11 +994,24 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
                     >
                       <div className="max-w-full">
                         {!isMe && (
-                          <span className="text-[10px] font-bold mb-1 block opacity-50 px-1">
-                            {isAdmin 
-                              ? `Admin - ${selectedThread?.adminAlias || msg.sender.name || "Support"}` 
-                              : (selectedThread?.userAlias || msg.sender.name || selectedThread?.email || "Guest")}
-                          </span>
+                          <div className="flex items-center gap-1.5 mb-1 px-1">
+                            {!isAdmin && (
+                              <Avatar className="h-4 w-4">
+                                {msg.sender.imageUrl || selectedThread?.userImage ? (
+                                  <img src={msg.sender.imageUrl || selectedThread?.userImage || ""} alt="" className="h-full w-full object-cover rounded-full" />
+                                ) : (
+                                  <AvatarFallback className="text-[8px] bg-primary/20 text-primary">
+                                    {(msg.sender.name || selectedThread?.name || "U")[0]}
+                                  </AvatarFallback>
+                                )}
+                              </Avatar>
+                            )}
+                            <span className="text-[10px] font-bold opacity-50">
+                              {isAdmin 
+                                ? (selectedThread?.adminAlias ? `Admin - ${selectedThread.adminAlias}` : msg.sender.name || "Admin") 
+                                : (selectedThread?.userAlias || msg.sender.name || selectedThread?.email || "Guest")}
+                            </span>
+                          </div>
                         )}
                         <div className={cn(
                             "px-4 py-2.5 rounded-2xl shadow-sm text-sm relative group mb-1", 

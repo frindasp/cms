@@ -23,6 +23,22 @@ export async function GET(request: Request) {
       orderBy: { updatedAt: 'desc' }
     });
 
+    // Fetch user avatars for distinct conversation emails
+    const emails = Array.from(new Set(conversations.map(c => c.email).filter(Boolean)));
+    const usersWithAvatar = await prisma.user.findMany({
+      where: { email: { in: emails } },
+      select: {
+        email: true,
+        UserImage: { select: { imageUrl: true } }
+      }
+    });
+    const avatarMap = new Map<string, string>();
+    for (const u of usersWithAvatar) {
+      if (u.UserImage?.imageUrl && !avatarMap.has(u.email)) {
+        avatarMap.set(u.email, u.UserImage.imageUrl);
+      }
+    }
+
     const messageThreads = conversations.map(conv => {
       const state = conv.readStates[0] || {} as any;
       const lastMessage = conv.messages[0];
@@ -37,6 +53,7 @@ export async function GET(request: Request) {
         email: conv.email,
         name: conv.name,
         title: conv.title,
+        userImage: avatarMap.get(conv.email) || null,
         lastMessage: lastMessage?.content || "No messages yet",
         lastMessageAt: lastMessage?.createdAt?.toISOString() || conv.updatedAt.toISOString(),
         messageCount: conv.messages.length, 

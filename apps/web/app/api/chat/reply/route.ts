@@ -3,6 +3,22 @@ import { auth } from "@/auth";
 import { ApiResponse } from "@/lib/api-response";
 import { pusherServer } from "@/lib/pusher";
 
+function formatAdminSender(roleName?: string | null, name?: string | null, email?: string | null): string {
+  const role = roleName || "Admin";
+  let initial = "";
+  if (name && name.trim()) {
+    const parts = name.trim().split(/\s+/);
+    initial = parts.length > 1 ? parts.map(p => p[0]?.toUpperCase() || "").join("") : name.slice(0, 2).toUpperCase();
+  } else if (email) {
+    const localPart = email.split("@")[0] || "";
+    const noVowels = localPart.replace(/[aeiouAEIOU]/g, "");
+    initial = (noVowels || localPart).slice(0, 4).toUpperCase();
+  } else {
+    initial = "ADM";
+  }
+  return `${role} - ${initial}`;
+}
+
 export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user) return ApiResponse.unauthorized();
@@ -24,7 +40,14 @@ export async function POST(request: Request) {
         status: 'SENT',
       },
       include: {
-        user: { select: { name: true } },
+        user: { 
+          select: { 
+            name: true, 
+            email: true,
+            role: { select: { name: true } },
+            UserImage: { select: { imageUrl: true } }
+          } 
+        },
         conversation: { select: { adminAlias: true } }
       }
     });
@@ -35,13 +58,16 @@ export async function POST(request: Request) {
     });
 
     const senderName = message.conversation?.adminAlias 
-       || message.user?.name 
-       || "Support";
+       ? `Admin - ${message.conversation.adminAlias}`
+       : formatAdminSender(message.user?.role?.name, message.user?.name, message.user?.email || session.user.email);
 
     const pusherMessage = {
       ...message,
       senderRole: "admin",
-      sender: { name: senderName }
+      sender: { 
+        name: senderName,
+        imageUrl: message.user?.UserImage?.imageUrl || null
+      }
     };
 
     await pusherServer.trigger(`conversation-${conversationId}`, "new-message", pusherMessage);
