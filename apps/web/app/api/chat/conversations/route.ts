@@ -23,25 +23,32 @@ export async function GET(request: Request) {
       orderBy: { updatedAt: 'desc' }
     });
 
-    // Fetch user avatars for distinct conversation emails
+    // Fetch user avatars and online/lastSeen status for distinct conversation emails
     const emails = Array.from(new Set(conversations.map(c => c.email).filter(Boolean)));
-    const usersWithAvatar = await prisma.user.findMany({
+    const usersData = await prisma.user.findMany({
       where: { email: { in: emails } },
       select: {
         email: true,
+        isOnline: true,
+        lastSeen: true,
         UserImage: { select: { imageUrl: true } }
       }
     });
     const avatarMap = new Map<string, string>();
-    for (const u of usersWithAvatar) {
+    const onlineMap = new Map<string, { isOnline: boolean; lastSeen: Date }>();
+    for (const u of usersData) {
       if (u.UserImage?.imageUrl && !avatarMap.has(u.email)) {
         avatarMap.set(u.email, u.UserImage.imageUrl);
+      }
+      if (!onlineMap.has(u.email) || u.isOnline) {
+        onlineMap.set(u.email, { isOnline: u.isOnline, lastSeen: u.lastSeen });
       }
     }
 
     const messageThreads = conversations.map(conv => {
       const state = conv.readStates[0] || {} as any;
       const lastMessage = conv.messages[0];
+      const userInfo = onlineMap.get(conv.email);
       
       let unreadCount = 0;
       if (!state.isRead && lastMessage && !lastMessage.isAdmin) {
@@ -54,6 +61,8 @@ export async function GET(request: Request) {
         name: conv.name,
         title: conv.title,
         userImage: avatarMap.get(conv.email) || null,
+        isOnline: userInfo?.isOnline ?? false,
+        lastSeen: userInfo?.lastSeen?.toISOString() || null,
         lastMessage: lastMessage?.content || "No messages yet",
         lastMessageAt: lastMessage?.createdAt?.toISOString() || conv.updatedAt.toISOString(),
         messageCount: conv.messages.length, 

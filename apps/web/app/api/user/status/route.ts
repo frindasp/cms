@@ -22,6 +22,7 @@ export async function POST(request: Request) {
 
     await pusherServer.trigger("user-status", "status-changed", {
       userId,
+      email: user.email,
       isOnline,
       lastSeen: lastSeen.toISOString(),
     });
