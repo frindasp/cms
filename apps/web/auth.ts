@@ -42,6 +42,16 @@ export const authConfig = {
     }),
   ],
   callbacks: {
+    authorized({ auth, request: { nextUrl } }: any) {
+      const isLoggedIn = !!auth?.user
+      const isOnAdmin = nextUrl.pathname.startsWith("/admin")
+
+      if (isOnAdmin) {
+        if (isLoggedIn) return true
+        return false // Redirects automatically to pages.signIn with callbackUrl
+      }
+      return true
+    },
     async jwt({ token, user }: any) {
       if (user) {
         token.role = (user as any).role

@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, Loader2, Plus, Save, X, ImageIcon } from "lucide-react"
+import { ArrowLeft, Loader2, Plus, Save, X, ImageIcon, Check, ChevronsUpDown } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card"
 import { Input } from "@workspace/ui/components/input"
@@ -13,6 +13,16 @@ import { Separator } from "@workspace/ui/components/separator"
 import { Switch } from "@workspace/ui/components/switch"
 import { Textarea } from "@workspace/ui/components/textarea"
 import { Badge } from "@workspace/ui/components/badge"
+import { Popover, PopoverContent, PopoverTrigger } from "@workspace/ui/components/popover"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@workspace/ui/components/command"
+import { cn } from "@workspace/ui/lib/utils"
 
 import { TagInput } from "@/components/tag-input"
 import { PortfolioImageUploader } from "@/components/portfolio-image-uploader"
@@ -89,6 +99,7 @@ export function PortfolioForm({ mode, initial }: PortfolioFormProps) {
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [openCombobox, setOpenCombobox] = useState(false)
 
   const { data: experiences = [] } = useQuery({
     queryKey: ["experiences", "portfolio-options"],
@@ -230,19 +241,73 @@ export function PortfolioForm({ mode, initial }: PortfolioFormProps) {
             <CardContent className="space-y-5">
               <div className="space-y-2">
                 <Label htmlFor="experienceId">Relasi Experience</Label>
-                <select
-                  id="experienceId"
-                  value={form.experienceId}
-                  onChange={(e) => set("experienceId", e.target.value)}
-                  className="w-full h-10 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                >
-                  <option value="">Tanpa Experience</option>
-                  {experiences.map((exp) => (
-                    <option key={exp.id} value={exp.id}>
-                      {exp.company} — {exp.role}
-                    </option>
-                  ))}
-                </select>
+                <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      id="experienceId"
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={openCombobox}
+                      className="w-full justify-between h-10 px-3 font-normal bg-background"
+                    >
+                      <span className="truncate">
+                        {form.experienceId
+                          ? (() => {
+                              const found = experiences.find((e) => e.id === form.experienceId)
+                              return found ? `${found.company} — ${found.role}` : "Pilih Experience"
+                            })()
+                          : "Tanpa Experience"}
+                      </span>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Cari experience..." />
+                      <CommandList>
+                        <CommandEmpty>Experience tidak ditemukan.</CommandEmpty>
+                        <CommandGroup>
+                          <CommandItem
+                            value="tanpa experience none"
+                            onSelect={() => {
+                              set("experienceId", "")
+                              setOpenCombobox(false)
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                !form.experienceId ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            Tanpa Experience
+                          </CommandItem>
+                          {experiences.map((exp) => {
+                            const label = `${exp.company} — ${exp.role}`
+                            return (
+                              <CommandItem
+                                key={exp.id}
+                                value={label}
+                                onSelect={() => {
+                                  set("experienceId", exp.id)
+                                  setOpenCombobox(false)
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    form.experienceId === exp.id ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                <span className="truncate">{label}</span>
+                              </CommandItem>
+                            )
+                          })}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
                 <p className="text-[10px] text-muted-foreground">Menghubungkan ke experience memungkinkan Anda memilih gambar dari riwayat kerja tersebut.</p>
               </div>
 

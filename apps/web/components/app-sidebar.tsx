@@ -236,7 +236,11 @@ export function AppSidebar() {
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuItem
               className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-              onSelect={() => signOut({ callbackUrl: "/login" })}
+              onSelect={() =>
+                signOut({
+                  callbackUrl: `/login?callbackUrl=${encodeURIComponent(pathname || "/admin")}`,
+                })
+              }
             >
               <LogOut className="mr-2 h-4 w-4" />
               <span>Log out</span>
