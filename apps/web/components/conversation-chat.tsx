@@ -674,9 +674,9 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
   if (status === "loading") return <div className="flex justify-center p-10"><Loader2 className="animate-spin" /></div>;
 
   return (
-    <div className="flex flex-col lg:flex-row h-[calc(100vh-250px)] lg:h-[750px] w-full gap-4 max-w-7xl mx-auto p-2">
+    <div className="flex flex-col lg:flex-row h-full w-full gap-4 max-w-7xl mx-auto">
       <Card className={cn(
-        "w-full lg:w-80 flex flex-col border-primary/10 bg-card/40 backdrop-blur-2xl shadow-2xl rounded-3xl overflow-hidden shrink-0",
+        "w-full lg:w-80 flex flex-col border-primary/10 bg-card/40 backdrop-blur-2xl shadow-2xl rounded-3xl overflow-hidden shrink-0 h-full",
         (selectedThread || activeTab === "new-chat") && "hidden lg:flex"
       )}>
         <CardHeader className="p-4 border-b border-primary/5 bg-primary/5">
@@ -752,7 +752,7 @@ export default function ConversationChat({ defaultTab = "message" }: Conversatio
       </Card>
 
       <Card className={cn(
-        "flex-1 flex flex-col border-primary/10 bg-card/40 backdrop-blur-2xl shadow-2xl rounded-3xl overflow-hidden relative",
+        "flex-1 flex flex-col border-primary/10 bg-card/40 backdrop-blur-2xl shadow-2xl rounded-3xl overflow-hidden relative h-full",
         (!selectedThread && activeTab !== "new-chat") && "hidden lg:flex"
       )}>
         {activeTab === "new-chat" ? (

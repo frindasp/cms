@@ -108,7 +108,7 @@ export default function ChatRoom() {
   }
 
   return (
-    <Card className="flex flex-col h-[600px] w-full max-w-4xl mx-auto shadow-2xl border-primary/20 bg-background/80 backdrop-blur-lg mt-8 overflow-hidden rounded-2xl">
+    <Card className="flex flex-col h-full w-full max-w-4xl mx-auto shadow-2xl border-primary/20 bg-background/80 backdrop-blur-lg overflow-hidden rounded-2xl">
       <CardHeader className="border-b bg-primary/5 backdrop-blur-xl py-4 flex flex-row items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="relative">
