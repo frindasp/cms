@@ -85,7 +85,7 @@ export default function SchemaBackupQueriesListPage() {
   if (isLoading) return <div className="p-8">Loading scripts...</div>
 
   return (
-    <div className="flex-1 space-y-4 p-8 pt-6">
+    <div className="space-y-4">
       <div className="flex items-center gap-2 mb-2">
          <Button variant="ghost" size="icon" onClick={() => router.back()}>
             <ChevronLeft className="h-4 w-4" />

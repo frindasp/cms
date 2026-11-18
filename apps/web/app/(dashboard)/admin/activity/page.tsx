@@ -12,9 +12,7 @@ export default function GlobalActivityPage() {
         </p>
       </div>
 
-      <div className="rounded-md border bg-card p-6">
-        <UserActivityTable pageSize={20} />
-      </div>
+      <UserActivityTable pageSize={20} />
     </div>
   );
 }

@@ -408,7 +408,7 @@ export default function BackupDetailPage() {
   if (!config) return <div className="p-8">Configuration not found</div>;
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+    <div className="space-y-4">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-2xl md:text-3xl font-bold tracking-tight">{config.name}</h2>

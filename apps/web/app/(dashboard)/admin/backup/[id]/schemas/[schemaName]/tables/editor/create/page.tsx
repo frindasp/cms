@@ -161,8 +161,8 @@ export default function SchemaBackupQueryCreatePage() {
   });
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)] overflow-hidden">
-      <div className="flex items-center justify-between p-8 pb-4">
+    <div className="flex flex-col min-h-full md:h-full md:overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-4">
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Link href={`/admin/backup/${id}/schemas/${schemaName}/tables/editor`} className="hover:text-primary transition-colors">SQL Scripts</Link>
@@ -194,7 +194,7 @@ export default function SchemaBackupQueryCreatePage() {
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-12 flex-1 px-8 pb-8 overflow-hidden">
+      <div className="grid gap-6 md:grid-cols-12 flex-1 pb-2 md:overflow-hidden">
         <div className="md:col-span-3 space-y-4 overflow-auto pr-2 custom-scrollbar">
           <Card>
             <CardHeader>

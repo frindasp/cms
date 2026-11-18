@@ -1,4 +1,5 @@
 import { AppSidebar } from "@/components/app-sidebar";
+import { DashboardShell } from "@/components/dashboard-shell";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@workspace/ui/components/sidebar";
 import { Separator } from "@workspace/ui/components/separator";
 import { auth } from "@/auth";
@@ -27,8 +28,8 @@ export default async function DashboardLayout({
             Admin Panel
           </div>
         </header>
-        <main className="flex-1 min-h-0 overflow-hidden p-3 md:p-6 flex flex-col">
-          {children}
+        <main className="flex-1 min-h-0 overflow-hidden p-2 sm:p-4 md:p-6 flex flex-col">
+          <DashboardShell>{children}</DashboardShell>
         </main>
       </SidebarInset>
     </SidebarProvider>

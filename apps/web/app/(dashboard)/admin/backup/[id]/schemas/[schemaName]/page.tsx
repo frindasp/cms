@@ -403,7 +403,7 @@ export default function SchemaDetailPage() {
   const displayDbName = config.databaseName.includes('/') ? config.databaseName.split('/')[1] : config.databaseName;
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+    <div className="space-y-4">
       <div className="flex items-center gap-2 mb-2">
          <Button variant="ghost" size="icon" onClick={() => router.push(`/admin/backup/${id}`)}>
             <ChevronLeft className="h-4 w-4" />

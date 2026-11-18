@@ -259,8 +259,8 @@ export default function BackupQueryEditPage() {
   if (!queryData) return <div className="p-8">Script not found</div>
 
   return (
-    <div className="flex h-[calc(100vh-80px)] flex-col overflow-hidden">
-      <div className="flex items-center justify-between p-8 pb-4">
+    <div className="flex min-h-full md:h-full flex-col md:overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-4">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => router.back()}>
             <ChevronLeft className="h-4 w-4" />
@@ -309,7 +309,7 @@ export default function BackupQueryEditPage() {
         </div>
       </div>
 
-      <div className="grid flex-1 gap-6 overflow-hidden px-8 pb-8 md:grid-cols-12">
+      <div className="grid flex-1 gap-6 md:overflow-hidden pb-2 md:grid-cols-12">
         <div className="custom-scrollbar space-y-4 overflow-auto pr-2 md:col-span-3">
           <Card>
             <CardHeader>
